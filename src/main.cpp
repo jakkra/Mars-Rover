@@ -17,7 +17,9 @@ enum MotorDirection {
 };
 
 #define SERIAL_PORT_SPEED 9600
-#define RC_NUM_CHANNELS  6
+
+#define RC_NUM_CHANNELS   6
+#define RC_FILTER_SAMPLES 3
 
 #define SERVO_MOVE_SPEED 60
 #define MIN_SERVO_ANGLE 20
@@ -55,7 +57,7 @@ enum MotorDirection {
 
 
 
-uint16_t rc_values[RC_NUM_CHANNELS];
+uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
 
 MotorDirection motorState = IDLE;
 RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
@@ -70,8 +72,15 @@ ServoEasing backLeft;
 ServoEasing backRight;
 
 int lastMs = 0;
+uint8_t rcValueIndex = 0;
 
-uint16_t filterSignal(uint16_t signal) {
+uint16_t filterSignal(uint16_t* signals) {
+  uint32_t signal = 0;
+  for (uint8_t i = 0; i < RC_FILTER_SAMPLES; i++) {
+    signal += signals[i];
+  }
+  signal = signal / RC_FILTER_SAMPLES;
+  
   if (signal == 0) return 0;
   if (signal < 1000) return 1000;
   if (signal > 2000) return 2000;
@@ -85,9 +94,19 @@ void modeChanged(RoverMode mode) {
   currentRoverMode = mode;
 }
 
+void resetRcValues(void) {
+  // Set all RC values to mid position
+  for (uint8_t channel = 0; channel < RC_NUM_CHANNELS; channel++) {
+    for (uint8_t sample = 0; sample < RC_FILTER_SAMPLES; sample++) {
+      rc_values[channel][sample] = 1500;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(SERIAL_PORT_SPEED);
 
+  resetRcValues();
 
   pinMode(RC_CH1_INPUT, INPUT);
   pinMode(RC_CH2_INPUT, INPUT);
@@ -165,6 +184,7 @@ void handleMoveMotos(void) {
     return; // TODO When I get two ESC:s they will run in opposite directions when in TURN_SPIN_MODE
   }
   uint16_t signal = filterSignal(rc_values[RC_MOTOR_CHANNEL]);
+  Serial.println(signal);
   if (signal < 1500 && signal > 0) { // Backward
     switch (motorState) {
       case IDLE:
@@ -226,6 +246,8 @@ void handleSteer(void) {
   steer(signal);
 }
 
+uint8_t numSamples = 5;
+uint8_t samplesGotten = 0;
 void loop() {
   SwitchCheckerUpdate();
   int time = millis();
@@ -235,18 +257,31 @@ void loop() {
   switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
-      rc_values[RC_STEER_CHANNEL] = pulseIn(RC_STEER_CHANNEL_INPUT, HIGH, 100000);
-      rc_values[RC_MOTOR_CHANNEL] = pulseIn(RC_MOTOR_CHANNEL_INPUT, HIGH, 100000);
+      rc_values[RC_STEER_CHANNEL][rcValueIndex] = pulseIn(RC_STEER_CHANNEL_INPUT, HIGH, 100000);
+      rc_values[RC_MOTOR_CHANNEL][rcValueIndex] = pulseIn(RC_MOTOR_CHANNEL_INPUT, HIGH, 100000);
+
+      // 0 if controller disconnected
+      if (rc_values[RC_STEER_CHANNEL][rcValueIndex] == 0) {
+        resetRcValues();
+      }
+
       handleMoveMotos();
       handleSteer();
       break;
     case ROBOT_ARM:
-      rc_values[RC_SERVO1_CHANNEL] = pulseIn(RC_SERVO1_CHANNEL_INPUT, HIGH, 100000);
-      rc_values[RC_SERVO2_CHANNEL] = pulseIn(RC_SERVO2_CHANNEL_INPUT, HIGH, 100000);
-      rc_values[RC_SERVO3_CHANNEL] = pulseIn(RC_SERVO3_CHANNEL_INPUT, HIGH, 100000);
+      rc_values[RC_SERVO1_CHANNEL][rcValueIndex] = pulseIn(RC_SERVO1_CHANNEL_INPUT, HIGH, 100000);
+      rc_values[RC_SERVO2_CHANNEL][rcValueIndex] = pulseIn(RC_SERVO2_CHANNEL_INPUT, HIGH, 100000);
+      rc_values[RC_SERVO3_CHANNEL][rcValueIndex] = pulseIn(RC_SERVO3_CHANNEL_INPUT, HIGH, 100000);
+
+      if (rc_values[RC_SERVO1_CHANNEL][rcValueIndex] == 0) {
+        resetRcValues();
+      }
+
       handleRobotArmServo21(&Servo1, RC_CH1);
       //handleRobotArmServo21(&Servo2, RC_CH3);
       //handleRobotArmServo21(&Servo3, RC_CH4);
       break;
   }
+
+  rcValueIndex = (rcValueIndex + 1) % RC_FILTER_SAMPLES;
 }
