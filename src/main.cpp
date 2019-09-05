@@ -56,7 +56,6 @@ enum MotorDirection {
 #define RC_SERVO3_CHANNEL RC_CH4
 
 
-
 uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
 
 MotorDirection motorState = IDLE;
@@ -65,7 +64,8 @@ RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
 ServoEasing Servo1;
 ServoEasing Servo2;
 ServoEasing Servo3;
-ServoEasing motors;
+ServoEasing motorsLeft;
+ServoEasing motorsRight;
 ServoEasing frontLeft;
 ServoEasing frontRight;
 ServoEasing backLeft;
@@ -116,9 +116,10 @@ void setup() {
   pinMode(RC_CH6_INPUT, INPUT);
   InitSwitchChecker(1000, RC_CH5_INPUT, &modeChanged);
   
-  motors.attach(11);
-  motors.writeMicroseconds(1500);
-
+  motorsLeft.attach(12);
+  motorsLeft.writeMicroseconds(1500);
+  motorsRight.attach(11);
+  motorsRight.writeMicroseconds(1500);
   /*
   A0 = backLeft
   A1 = frontLeft
@@ -139,13 +140,13 @@ void setup() {
   Servo2.attach(9);
   Servo3.attach(10);
   setEasingTypeForAllServos(EASE_LINEAR);
-  Servo1.setSpeed(30);
-  Servo2.setSpeed(30);
-  Servo3.setSpeed(30);
+  Servo1.setSpeed(10);
+  Servo2.setSpeed(10);
+  Servo3.setSpeed(10);
   Servo1.setEaseTo(90);
   Servo2.setEaseTo(90);
   Servo3.startEaseTo(90);
-  while (Servo1.isMoving() || Servo2.isMoving() || Servo3.isMoving());
+  //while (Servo1.isMoving() || Servo2.isMoving() || Servo3.isMoving());
   Serial.println("Ready");
   lastMs = millis();
 }
@@ -179,60 +180,89 @@ void handleRobotArmServo21(ServoEasing* servo, uint16_t channel) {
   }
 }
 
-void handleMoveMotos(void) {
-  if (currentRoverMode != DRIVE_TURN_NORMAL) {
-    return; // TODO When I get two ESC:s they will run in opposite directions when in TURN_SPIN_MODE
-  }
-  uint16_t signal = filterSignal(rc_values[RC_MOTOR_CHANNEL]);
-  Serial.println(signal);
-  if (signal < 1500 && signal > 0) { // Backward
-    switch (motorState) {
-      case IDLE:
-      Serial.println("Was IDLE");
-        motors.writeMicroseconds(1000);
-        delay(200);
-        motors.writeMicroseconds(1500);
-        delay(200);
-        motorState = BACKWARD;
-        break;
-      case FORWARD:
-        break;
-      case BACKWARD:
-        break;
-    }
-    //Serial.print("CH:"); Serial.print(RC_MOTOR_CHANNEL); Serial.print(" "); Serial.print(rc_values[RC_MOTOR_CHANNEL]); Serial.print("\n");
-  } else if (signal > 1500) {
-    motorState = FORWARD;
-    //Serial.print("CH:"); Serial.print(RC_MOTOR_CHANNEL); Serial.print(" "); Serial.print(rc_values[RC_MOTOR_CHANNEL]); Serial.print("\n");
-  } else {
-    motorState = IDLE;
-  }
-
-  motors.writeMicroseconds(signal); // Motor controller handles filtering test?
+void setMotorInReverseMode(ServoEasing motor) {
+  motor.writeMicroseconds(1400);
+  delay(100);
+  motor.writeMicroseconds(1500);
+  delay(100);
 }
 
-void steer(uint16_t signal) {
+void handleMoveMotors(uint16_t signal) {
+  Serial.println(signal);
+
+  switch (currentRoverMode) {
+    case DRIVE_TURN_NORMAL:
+        if (signal < 1500 && signal > 0) { // Backward        
+          switch (motorState) {
+            case IDLE:
+              Serial.println("Was IDLE");
+              setMotorInReverseMode(motorsLeft);
+              setMotorInReverseMode(motorsRight);
+              motorState = BACKWARD;
+              break;
+            case FORWARD:
+              break;
+            case BACKWARD:
+              break;
+          }
+        
+      } else if (signal > 1500) {
+        motorState = FORWARD;
+      } else {
+        motorState = IDLE;
+      }
+      motorsLeft.writeMicroseconds(signal);
+      motorsRight.writeMicroseconds(signal);
+      break;
+    case DRIVE_TURN_SPIN:
+      {
+        uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
+        Serial.print(signal);
+        Serial.print(" ");
+        Serial.println(diff);
+
+        if (signal < 1500 && signal > 0) { // Anticlockwise
+          if (motorState == IDLE) {
+            Serial.println("Was Idle");
+            setMotorInReverseMode(motorsLeft);
+            motorState = FORWARD;
+          }
+          motorsRight.writeMicroseconds(1500 + diff);
+          motorsLeft.writeMicroseconds(1500 - diff);
+        } else if (signal > 1500) {
+          if (motorState == IDLE) {
+            Serial.println("Was Idle");
+            setMotorInReverseMode(motorsRight);
+            motorState = FORWARD;
+          }
+          motorsRight.writeMicroseconds(1500 - diff); // Clockwise
+          motorsLeft.writeMicroseconds(1500 + diff);
+        } else {
+          motorState = IDLE;
+          motorsLeft.writeMicroseconds(signal);
+          motorsRight.writeMicroseconds(signal);
+        }
+        break;
+      }
+    default:
+      break;
+  }
+
+}
+
+void steerNormal(uint16_t signal) {
   if (signal < 1500 && signal > 0) { // Left turn
-    if (currentRoverMode == DRIVE_TURN_NORMAL) {
       uint16_t diff = 1500 - signal;
       frontLeft.writeMicrosecondsOrUnits(signal);
       frontRight.writeMicrosecondsOrUnits(signal);
       backLeft.writeMicrosecondsOrUnits(1500 + diff);
       backRight.writeMicrosecondsOrUnits(1500 + diff);
-    } else if (currentRoverMode == DRIVE_TURN_SPIN) {
-      // TODO
-    }
   } else if (signal > 1500) { // Right turn
-    if (currentRoverMode == DRIVE_TURN_NORMAL) {
       uint16_t diff = signal - 1500;
       frontLeft.writeMicrosecondsOrUnits(signal);
       frontRight.writeMicrosecondsOrUnits(signal);
       backLeft.writeMicrosecondsOrUnits(1500 - diff);
       backRight.writeMicrosecondsOrUnits(1500 - diff);
-    } else if(currentRoverMode == DRIVE_TURN_SPIN) {
-      // TODO
-    }
-
   } else {
     frontLeft.writeMicrosecondsOrUnits(1500);
     frontRight.writeMicrosecondsOrUnits(1500);
@@ -241,13 +271,27 @@ void steer(uint16_t signal) {
   }
 }
 
-void handleSteer(void) {
-  uint16_t signal = filterSignal(rc_values[RC_STEER_CHANNEL]);
-  steer(signal);
+void steerSpin(uint16_t signal) {
+  frontLeft.writeMicrosecondsOrUnits(2000);
+  frontRight.writeMicrosecondsOrUnits(1000);
+  backLeft.writeMicrosecondsOrUnits(1000);
+  backRight.writeMicrosecondsOrUnits(2000);
 }
 
-uint8_t numSamples = 5;
-uint8_t samplesGotten = 0;
+void handleSteer(void) {
+  uint16_t signal = filterSignal(rc_values[RC_STEER_CHANNEL]);
+  switch (currentRoverMode) {
+    case DRIVE_TURN_NORMAL:
+      steerNormal(signal);
+      break;
+    case DRIVE_TURN_SPIN:
+      steerSpin(signal);
+      break;
+    default:
+      break;
+    }
+  }
+
 void loop() {
   SwitchCheckerUpdate();
   int time = millis();
@@ -257,17 +301,26 @@ void loop() {
   switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
+    {
+      uint16_t signal;
+
       rc_values[RC_STEER_CHANNEL][rcValueIndex] = pulseIn(RC_STEER_CHANNEL_INPUT, HIGH, 100000);
       rc_values[RC_MOTOR_CHANNEL][rcValueIndex] = pulseIn(RC_MOTOR_CHANNEL_INPUT, HIGH, 100000);
 
-      // 0 if controller disconnected
+      // 0 if controller disconnected 
       if (rc_values[RC_STEER_CHANNEL][rcValueIndex] == 0) {
         resetRcValues();
       }
 
-      handleMoveMotos();
+      if (currentRoverMode == DRIVE_TURN_NORMAL) {
+        signal = filterSignal(rc_values[RC_MOTOR_CHANNEL]);
+      } else if (currentRoverMode == DRIVE_TURN_SPIN) {
+        signal = filterSignal(rc_values[RC_STEER_CHANNEL]);
+      }
+      handleMoveMotors(signal);
       handleSteer();
       break;
+    }
     case ROBOT_ARM:
       rc_values[RC_SERVO1_CHANNEL][rcValueIndex] = pulseIn(RC_SERVO1_CHANNEL_INPUT, HIGH, 100000);
       rc_values[RC_SERVO2_CHANNEL][rcValueIndex] = pulseIn(RC_SERVO2_CHANNEL_INPUT, HIGH, 100000);
@@ -278,8 +331,8 @@ void loop() {
       }
 
       handleRobotArmServo21(&Servo1, RC_CH1);
-      //handleRobotArmServo21(&Servo2, RC_CH3);
-      //handleRobotArmServo21(&Servo3, RC_CH4);
+      handleRobotArmServo21(&Servo2, RC_CH2);
+      handleRobotArmServo21(&Servo3, RC_CH4);
       break;
   }
 
