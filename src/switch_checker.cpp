@@ -1,34 +1,53 @@
 #include "switch_checker.h"
 
-uint32_t interval = 1000;
-uint32_t prevUpdateMs;
-RoverMode currentMode = DRIVE_TURN_NORMAL;
-RoverModeChanged* modeChangedCallback;
-uint16_t switchPin;
+static uint32_t interval = 1000;
+static uint32_t prevUpdateMs;
+static RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
+static ArmMode currentArmMode = ARM_MODE_MOVE;
+static RoverModeChanged* modeChangedCallback;
+static ArmModeChanged* armModeCallback;
+static uint16_t roverModePin;
+static uint16_t armModePin;
 
-void InitSwitchChecker(uint32_t checkIntervalMs, uint16_t pin, RoverModeChanged* callback) {
+void InitSwitchChecker(uint32_t checkIntervalMs, uint16_t roverModeSwitchPin, uint16_t armModeSwitchPin, RoverModeChanged* callback, ArmModeChanged* armCallback) {
     interval = checkIntervalMs;
     modeChangedCallback = callback;
-    switchPin = pin;
+    armModeCallback = armCallback;
+    roverModePin = roverModeSwitchPin;
+    armModePin = armModeSwitchPin;
 }
 
 void SwitchCheckerUpdate() {
     uint16_t signal;
     uint32_t now = millis();
-    RoverMode newMode;
+    RoverMode newRoverMode;
+    ArmMode newArmMode;
+
     if (now - prevUpdateMs > interval) {
-        signal = pulseIn(switchPin, HIGH, 100000);
+        signal = pulseIn(roverModePin, HIGH, 100000);
         if (signal < 1400) {
-            newMode = DRIVE_TURN_NORMAL;
+            newRoverMode = DRIVE_TURN_NORMAL;
         } else if (signal > 1600) {
-            newMode = ROBOT_ARM;
+            newRoverMode = ROBOT_ARM;
         } else {
-            newMode = DRIVE_TURN_SPIN;
+            newRoverMode = DRIVE_TURN_SPIN;
+        }
+
+        signal = pulseIn(armModePin, HIGH, 100000);
+        if (signal < 1400) {
+            newArmMode = ARM_MODE_MOVE;
+        } else if (signal > 1600) {
+            newArmMode = ARM_MODE_GRIPPER;
         }
         prevUpdateMs = now;
     }
-    if (newMode != currentMode) {
-        currentMode = newMode;
-        modeChangedCallback(newMode);
+    if (newRoverMode != currentRoverMode) {
+        currentRoverMode = newRoverMode;
+        modeChangedCallback(newRoverMode);
+    }
+
+    if (newArmMode != currentArmMode) {
+        currentArmMode = newArmMode;
+        armModeCallback(newArmMode);
     }
 }

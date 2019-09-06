@@ -6,7 +6,14 @@ typedef enum RoverMode {
     ROBOT_ARM,
 } RoverMode;
 
-typedef void (RoverModeChanged)(RoverMode mode);
+typedef enum ArmMode {
+    ARM_MODE_MOVE,
+    ARM_MODE_GRIPPER,
+} ArmMode;
 
-void InitSwitchChecker(uint32_t checkIntervalMs, uint16_t pin, RoverModeChanged* callback);
+typedef void (RoverModeChanged)(RoverMode mode);
+typedef void (ArmModeChanged)(ArmMode mode);
+
+
+void InitSwitchChecker(uint32_t checkIntervalMs, uint16_t roverModeSwitchPin, uint16_t armModeSwitchPin, RoverModeChanged* callback, ArmModeChanged* armCallback);
 void SwitchCheckerUpdate();
