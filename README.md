@@ -22,7 +22,9 @@ Currently arm is just pretty much mapped to controls on the RC Controller, this 
 - 6 Channel RC receiver and transmitter
 - MCU
 - 3S battery
-
+- Lots of screws and bolts, mostly M3, but some M4's too.
+- Two kinds of bearings: 5x 608ZZ and 5x 25mm SKF 6005
+- Check the Fusion360 project for more details.
 - Cable madness is TODO to fix
 ## Images
 Videos:
