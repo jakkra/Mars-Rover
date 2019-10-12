@@ -15,5 +15,4 @@ typedef void (RoverModeChanged)(RoverMode mode);
 typedef void (ArmModeChanged)(ArmMode mode);
 
 
-void InitSwitchChecker(uint32_t checkIntervalMs, uint16_t roverModeSwitchPin, uint16_t armModeSwitchPin, RoverModeChanged* callback, ArmModeChanged* armCallback);
-void SwitchCheckerUpdate();
+void init_switch_checker(uint32_t checkIntervalMs, uint16_t roverModeSwitchChannel, uint16_t armModeSwitchChannel, RoverModeChanged* callback, ArmModeChanged* armCallback);
