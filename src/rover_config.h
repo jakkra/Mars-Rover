@@ -43,3 +43,7 @@
 
 
 #define ARM_NUM_AXIS 6
+
+#define ROVER_SCL_PIN               27
+#define ROVER_SDA_PIN               22
+#define ROVER_GYRO_ACCEL_INT_PIN    34

@@ -19,9 +19,14 @@
 #include "rover_config.h"
 #include "esp_log.h"
 #include <ESP32Servo.h>
+#include "Wire.h"
 #include "rc_receiver_rmt.h"
 #include "switch_checker.h"
 #include "arm.h"
+#include "gyro_accel_sensor.h"
+#include <Adafruit_PWMServoDriver.h>
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 #define DEBUG
 
@@ -62,6 +67,7 @@ Servo frontRight;
 Servo backLeft;
 Servo backRight;
 
+
 uint16_t filter_signal(uint16_t* signals) {
   uint32_t signal = 0;
   for (uint8_t i = 0; i < RC_FILTER_SAMPLES; i++) {
@@ -99,9 +105,18 @@ void handleIfControllerDisconnected(uint16_t lastSampledSignal) {
   }
 }
 
+#define INTERRUPT_PIN 34
+
+const signed char orientationDefault[9] = { 0, 1, 0, 0, 0, 1, 1, 0, 0 };
+
 void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
     ESP_LOGI("", "START");
+    Wire.begin(22, 27);
+    Wire.setClock(400000);
+    gyro_accel_init(true);
+    return;
+
     handleIfControllerDisconnected(0);
     rc_receiver_rmt_init();
     init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &roverModeChanged, &armModeChanged);
@@ -260,6 +275,8 @@ void handleSteer(void) {
 }
 
 void loop() {
+  
+  return;
   switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
