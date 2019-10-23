@@ -21,12 +21,13 @@
 #include <ESP32Servo.h>
 #include "Wire.h"
 #include "rc_receiver_rmt.h"
+#include "wifi_controller.h"
 #include "switch_checker.h"
 #include "arm.h"
 #include "gyro_accel_sensor.h"
-#include <Adafruit_PWMServoDriver.h>
 
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+// TODO: Have this dynamicly changeable
+#define USE_WIFI_FOR_CONTROL
 
 #define DEBUG
 
@@ -43,6 +44,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define LOGF(...)
 #define LOGLN(msg)
 #endif
+
+static void handle_wifi_controller_status(wifi_controller_status status);
 
 enum MotorDirection {
   MOTOR_IDLE,
@@ -64,6 +67,8 @@ Servo frontLeft;
 Servo frontRight;
 Servo backLeft;
 Servo backRight;
+
+static wifi_controller_status current_wifi_status = WIFI_CONTROLLER_ERROR;
 
 
 uint16_t filter_signal(uint16_t* signals) {
@@ -110,9 +115,12 @@ void setup() {
     gyro_accel_init(true);
 
     handleIfControllerDisconnected(0);
+#ifndef USE_WIFI_FOR_CONTROL
     rc_receiver_rmt_init();
     init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &roverModeChanged, &armModeChanged);
-
+#else
+  wifi_controller_init("rover", NULL, &handle_wifi_controller_status);
+#endif
     motorsLeft.attach(12);
     motorsLeft.writeMicroseconds(1500);
     motorsRight.attach(13);
@@ -250,6 +258,34 @@ void handleSteer(void) {
   }
 }
 
+static void handle_wifi_controller_status(wifi_controller_status status)
+{
+  ESP_LOGI("Main", "Wifi Controller status: %d\n");
+  current_wifi_status = status;
+  if (status != WIFI_CONTROLLER_CONNECTED) {
+    handleIfControllerDisconnected(0);
+  }
+}
+
+static uint16_t get_controller_channel_value(uint8_t channel)
+{
+  uint16_t channel_value = 0;
+
+  #ifndef USE_WIFI_FOR_CONTROL
+    channel_value = rc_receiver_rmt_get_val(channel);
+  #else
+    if (current_wifi_status == WIFI_CONTROLLER_CONNECTED) {
+      channel_value = wifi_controller_get_val(channel);
+    }
+  #endif
+
+  if (channel_value == 0) {
+    channel_value = 1500;
+  }
+
+  return channel_value;
+}
+
 void loop() {
   
   return;
@@ -259,9 +295,8 @@ void loop() {
     {
       uint16_t signal = 1500;
 
-      rc_values[RC_STEER_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_STEER_CHANNEL);
-      rc_values[RC_MOTOR_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_MOTOR_CHANNEL);
-      handleIfControllerDisconnected(rc_values[RC_STEER_CHANNEL][rcValueIndex]);
+      rc_values[RC_STEER_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_STEER_CHANNEL);
+      rc_values[RC_MOTOR_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_MOTOR_CHANNEL);
 
       if (currentRoverMode == DRIVE_TURN_NORMAL) {
         signal = filter_signal(rc_values[RC_MOTOR_CHANNEL]);
@@ -274,20 +309,18 @@ void loop() {
     }
     case ROBOT_ARM:
       if (currentArmMode == ARM_MODE_MOVE) {
-        rc_values[RC_SERVO1_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO1_CHANNEL);
-        rc_values[RC_SERVO2_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO2_CHANNEL);
-        rc_values[RC_SERVO3_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO3_CHANNEL);
-        rc_values[RC_SERVO4_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO4_CHANNEL);
-        handleIfControllerDisconnected(rc_values[RC_SERVO1_CHANNEL][rcValueIndex]);
+        rc_values[RC_SERVO1_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO1_CHANNEL);
+        rc_values[RC_SERVO2_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO2_CHANNEL);
+        rc_values[RC_SERVO3_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO3_CHANNEL);
+        rc_values[RC_SERVO4_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO4_CHANNEL);
 
         handleRobotArmServo(ARM_AXIS_1, RC_SERVO1_CHANNEL);
         handleRobotArmServo(ARM_AXIS_2, RC_SERVO2_CHANNEL);
         handleRobotArmServo(ARM_AXIS_3, RC_SERVO3_CHANNEL);
         handleRobotArmServo(ARM_AXIS_4, RC_SERVO4_CHANNEL);
       } else if (currentArmMode == ARM_MODE_GRIPPER) {
-        rc_values[RC_SERVO5_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO5_CHANNEL);
-        rc_values[RC_SERVO6_CHANNEL][rcValueIndex] = rc_receiver_rmt_get_val(RC_SERVO6_CHANNEL);
-        handleIfControllerDisconnected(rc_values[RC_SERVO5_CHANNEL][rcValueIndex]);
+        rc_values[RC_SERVO5_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO5_CHANNEL);
+        rc_values[RC_SERVO6_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO6_CHANNEL);
 
         handleRobotArmServo(ARM_AXIS_5, RC_SERVO5_CHANNEL);
         handleRobotArmServo(ARM_AXIS_6, RC_SERVO6_CHANNEL);
@@ -295,5 +328,5 @@ void loop() {
       break;
   }
   rcValueIndex = (rcValueIndex + 1) % RC_FILTER_SAMPLES;
-  vTaskDelay(20 / portTICK_PERIOD_MS);
+  vTaskDelay(pdMS_TO_TICKS(20));
 }

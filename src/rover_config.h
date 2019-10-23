@@ -3,6 +3,8 @@
 #define RC_NUM_CHANNELS   6
 #define RC_FILTER_SAMPLES 2
 
+#define RECEIVER_CH_CENTER 1500
+
 #define RC_CH1  0
 #define RC_CH2  1
 #define RC_CH3  2

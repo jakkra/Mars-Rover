@@ -8,7 +8,7 @@
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
 
-#define DEBUG_ACCEL
+//#define DEBUG_ACCEL
 
 static void handle_mpu_data(void* params);
 static void dmp_data_ready();

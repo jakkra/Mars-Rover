@@ -17,16 +17,16 @@
 
 static const char* TAG = "RC_RMT";
 
-static volatile uint16_t channel_values[RECEIVER_CH_NUM] = {0};
-static const uint8_t RECEIVER_CHANNELS[RECEIVER_CH_NUM] = { 1, 2, 3, 4, 5, 6 };
-static const uint8_t RECEIVER_GPIOS[RECEIVER_CH_NUM] = { RC_CH1_INPUT, RC_CH2_INPUT, RC_CH3_INPUT, RC_CH4_INPUT, RC_CH5_INPUT, RC_CH6_INPUT };
+static volatile uint16_t channel_values[RC_NUM_CHANNELS] = {0};
+static const uint8_t RECEIVER_CHANNELS[RC_NUM_CHANNELS] = { 1, 2, 3, 4, 5, 6 };
+static const uint8_t RECEIVER_GPIOS[RC_NUM_CHANNELS] = { RC_CH1_INPUT, RC_CH2_INPUT, RC_CH3_INPUT, RC_CH4_INPUT, RC_CH5_INPUT, RC_CH6_INPUT };
 
 
 static void rmt_isr_handler(void* arg){
     uint32_t intr_st = RMT.int_st.val;
     uint8_t i;
 
-    for (i = 0; i < RECEIVER_CH_NUM; i++){
+    for (i = 0; i < RC_NUM_CHANNELS; i++){
         uint8_t channel = RECEIVER_CHANNELS[i];
         uint32_t channel_mask = BIT(channel * 3 + 1);
 
@@ -52,9 +52,9 @@ void rc_receiver_rmt_init(void)
 {
     uint8_t i;
 
-    rmt_config_t rmt_channels[RECEIVER_CH_NUM] = {};
+    rmt_config_t rmt_channels[RC_NUM_CHANNELS] = {};
 
-    for (i = 0; i < RECEIVER_CH_NUM; i++) {
+    for (i = 0; i < RC_NUM_CHANNELS; i++) {
         channel_values[i] = RECEIVER_CH_CENTER;
 
         rmt_channels[i].channel = (rmt_channel_t) RECEIVER_CHANNELS[i];
@@ -77,6 +77,6 @@ void rc_receiver_rmt_init(void)
 
 uint16_t rc_receiver_rmt_get_val(uint8_t channel)
 {
-    assert(channel < RECEIVER_CH_NUM);
+    assert(channel < RC_NUM_CHANNELS);
     return channel_values[channel];    
 }
