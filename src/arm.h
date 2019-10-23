@@ -13,7 +13,7 @@ typedef enum ArmAxis {
   ARM_AXIS_6,
 } ArmAxis;
 
-void arm_init(Servo* servos, uint8_t num_servos);
+void arm_init();
 
 void arm_move_axis_us(ArmAxis axisNum, uint16_t pos, uint8_t speed);
 

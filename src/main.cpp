@@ -57,8 +57,6 @@ MotorDirection motorState = MOTOR_IDLE;
 RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
 ArmMode currentArmMode = ARM_MODE_MOVE;
 
-static Servo arm_servos[ARM_NUM_AXIS];
-
 Servo motorsLeft;
 Servo motorsRight;
 
@@ -105,17 +103,11 @@ void handleIfControllerDisconnected(uint16_t lastSampledSignal) {
   }
 }
 
-#define INTERRUPT_PIN 34
-
-const signed char orientationDefault[9] = { 0, 1, 0, 0, 0, 1, 1, 0, 0 };
-
 void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
-    ESP_LOGI("", "START");
     Wire.begin(22, 27);
     Wire.setClock(400000);
     gyro_accel_init(true);
-    return;
 
     handleIfControllerDisconnected(0);
     rc_receiver_rmt_init();
@@ -137,27 +129,11 @@ void setup() {
     backLeft.writeMicroseconds(1500);
     backRight.writeMicroseconds(1500);
 
-    // 6 Axis Arm Servos
-    arm_servos[0].attach(18);
-    arm_servos[1].attach(19);
-    arm_servos[2].attach(21);
-    arm_servos[3].attach(22);
-    arm_servos[4].attach(23);
-    arm_servos[5].attach(2);
 
-    // Arm start position
-    arm_servos[0].writeMicroseconds(1500);
-    arm_servos[1].writeMicroseconds(1500);
-    arm_servos[2].writeMicroseconds(1000);
-    arm_servos[3].writeMicroseconds(1300);
-    arm_servos[4].writeMicroseconds(1500);
-    arm_servos[5].writeMicroseconds(1500);
+    arm_init();
 
-    arm_init(arm_servos, ARM_NUM_AXIS);
-
-    ESP_LOGI(TAG, "Ready, core: %d", xPortGetCoreID());
+    ESP_LOGI(TAG, "Rover Ready! Core: %d", xPortGetCoreID());
 }
-
 
 void handleRobotArmServo(ArmAxis arm_axis, uint16_t channel) {
   

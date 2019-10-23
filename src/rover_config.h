@@ -47,3 +47,6 @@
 #define ROVER_SCL_PIN               27
 #define ROVER_SDA_PIN               22
 #define ROVER_GYRO_ACCEL_INT_PIN    34
+
+#define SERVOMIN  150 // this is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  600 // this is the 'maximum' pulse length count (out of 4096)

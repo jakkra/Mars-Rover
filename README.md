@@ -37,3 +37,13 @@ Videos:
 <img src="/.github/parts.jpg "/>
 <img src="/.github/render.jpg" />
 <img src="/.github/cad.png" />
+
+## Building
+In I2Cdevlib-MPU6050 a check for ARDUINO_ARCH_ESP32 in MPU6050_6Axis_MotionApps20.h is necessary for the project to build:
+```
+#ifndef ARDUINO_ARCH_ESP32
+  typedef void prog_void;
+  ...
+  typedef uint32_t prog_uint32_t;
+#endif
+```
