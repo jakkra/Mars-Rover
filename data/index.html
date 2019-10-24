@@ -1,0 +1,139 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    
+    <style>
+    body {
+      overflow	: hidden;
+      padding		: 0;
+      margin		: 0;
+      background-color: rgb(56, 44, 44);
+    }
+    #info {
+      position	: absolute;
+      top		: 0px;
+      width		: 100%;
+      padding		: 5px;
+      text-align	: center;
+      color: rgb(214, 185, 185);;
+    }
+    #container {
+      width		: 100%;
+      height		: 100%;
+      overflow	: hidden;
+      padding		: 0;
+      margin		: 0;
+      -webkit-user-select	: none;
+      -moz-user-select	: none;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div id="info">
+      Rover
+      <br/>
+      <span id="resultLeft"></span> <span id="resultRight"></span>
+    </div> 
+    <!-- 
+      <script src="file:/C:/Users/ijakk_000/Documents/Rover-code/data/virtualjoystick.js"></script>
+    -->
+    <script src="virtualjoystick.js"></script>
+    <script>
+      const map = (value, x1, y1, x2, y2) => (value - x1) * (y2 - x2) / (y1 - x1) + x2;
+      var roverConnected = false;
+      var timer = null;
+      var connection = new WebSocket('ws://192.168.4.1:81');
+      console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
+      
+      connection.onopen = function () {
+        console.log("Websocket Open");
+        roverConnected = true;
+        timer = setInterval(sendData, 250);
+      };
+
+      connection.onerror = function (error) {
+        console.log('WebSocket Error ' + error);
+        if (roverConnected) {
+          clearInterval(timer);
+        }
+        roverConnected = false;
+      };
+
+      connection.onmessage = function (e) {
+         console.log("indata: " + e.data);
+      };
+  
+      connection.onclose = function (e) {
+          console.log("Websocket close");
+          if (roverConnected) {
+            clearInterval(timer);
+          }
+          roverConnected = false;
+      };
+
+      var joystickLeft	= new VirtualJoystick({
+        container	: document.getElementById('container'),
+        strokeStyle	: 'cyan',
+        mouseSupport	: true,
+        limitStickTravel: true,
+      });
+
+      joystickLeft.addEventListener('touchStartValidation', function(event) {
+        var touch	= event.changedTouches[0];
+        if (touch.pageX < window.innerWidth / 2)	return false;
+        return true
+      });
+
+      joystickLeft.addEventListener('touchEnd', function() {
+
+      });
+
+      var joystickRight	= new VirtualJoystick({
+        container	: document.getElementById('container'),
+        strokeStyle	: 'orange',
+        mouseSupport	: true,
+        limitStickTravel: true,
+      });
+
+      joystickRight.addEventListener('touchStartValidation', function(event) {
+        var touch	= event.changedTouches[0];
+        if (touch.pageX >= window.innerWidth / 2)	return false;
+        return true
+      });
+
+      joystickRight.addEventListener('touchEnd', function() {
+
+      });
+
+      sendData = function (e) {
+        var channelValues = new Uint16Array(6);
+        var xLeft = Math.round(joystickLeft.deltaX());
+        var yLeft = Math.round(joystickLeft.deltaY() * -1);
+        var xRight = Math.round(joystickRight.deltaX());
+        var yRight = Math.round(joystickRight.deltaY() * - 1);
+
+
+        channelValues[0] = map(xLeft, -100, 100, 1000, 2000);
+        channelValues[1] = map(yLeft, -100, 100, 1000, 2000);;
+        channelValues[2] = map(xRight, -100, 100, 1000, 2000);;
+        channelValues[3] = map(yRight, -100, 100, 1000, 2000);;
+        channelValues[4] = 1500;
+        channelValues[5] = 1500;
+        console.log(channelValues);
+        connection.send(channelValues);
+
+        var outputEl	= document.getElementById('resultLeft');
+        var outputE2	= document.getElementById('resultRight');
+        outputEl.innerHTML	= '<b>Left:</b> '
+          + ' dx:' + xLeft
+          + ' dy:' + yLeft
+        outputE2.innerHTML	= '<b>Right:</b> '
+          + ' dx:' + xLeft
+          + ' dy:' + yLeft
+      };
+
+    </script>
+  </body>
+</html>

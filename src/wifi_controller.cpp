@@ -1,6 +1,8 @@
 #include "wifi_controller.h"
 #include "rover_config.h"
 #include "WiFi.h"
+#include "FS.h"
+#include "SPIFFS.h"
 #include "WebServer.h"
 #include <WebSocketsServer.h>
 #include "esp_log.h"
@@ -11,6 +13,7 @@ static void handle_on_root(void);
 static void handle_not_found(void);
 static void web_server_handler(void* params);
 static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
+static void list_dir(const char* dirname, uint8_t levels);
 
 static uint16_t channel_values[RC_NUM_CHANNELS] = {0};
 
@@ -31,6 +34,11 @@ void wifi_controller_init(const char* ssid, const char* password, wifi_controlle
   TaskHandle_t xHandle = NULL;
   memset(channel_values, 0, sizeof(channel_values));
 
+  if(!SPIFFS.begin(true)){
+    Serial.println("SPIFFS Mount Failed");
+    return;
+  }
+  list_dir("/", 0);
   wifi_ssid = ssid;
   password = password;
 
@@ -38,8 +46,8 @@ void wifi_controller_init(const char* ssid, const char* password, wifi_controlle
   WiFi.softAPConfig(local_ip, gateway, subnet);
 
   status_cb = cb;
-
-  server.on("/", HTTP_GET , handle_on_root);
+  server.serveStatic("/", SPIFFS, "/index.html", "");
+  server.serveStatic("/virtualjoystick.js", SPIFFS, "/virtualjoystick.js", "");
   server.onNotFound(handle_not_found);
   server.begin();
   websocket_server.onEvent(handle_websocket_event);
@@ -70,18 +78,22 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
   switch (type)
   {
     case WStype_DISCONNECTED:
+      printf("Disconnect\n");
       assert(status_cb != NULL);
       memset(channel_values, 0, sizeof(channel_values));
       status_cb(WIFI_CONTROLLER_DISCONNECTED);
       break;
     case WStype_CONNECTED:
+      printf("Connected\n");
       assert(status_cb != NULL);
       memset(channel_values, 0, sizeof(channel_values));
       status_cb(WIFI_CONTROLLER_CONNECTED);
       break;
     case WStype_TEXT:
+      printf("Data: %.*s\n", length, payload);
       break;
     case WStype_BIN:
+      printf("Bin received length: %d\n", length);
       if (length >= RC_NUM_CHANNELS * sizeof(uint16_t)) {
         uint16_t* values = (uint16_t*)payload;
         for (uint8_t i = 0; i < RC_NUM_CHANNELS; i++) {
@@ -95,6 +107,7 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
       } else {
         ESP_LOGI(TAG, "Invalid binary length");
       }
+      printf("%d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3]);
       break;
   default:
     break;
@@ -108,4 +121,33 @@ static void web_server_handler(void* params)
     server.handleClient();
     vTaskDelay(pdMS_TO_TICKS(10));
   }
+}
+
+static void list_dir(const char* dirname, uint8_t levels) {
+    File root = SPIFFS.open(dirname);
+    if (!root){
+      Serial.println("- failed to open directory");
+      return;
+    }
+    if (!root.isDirectory()) {
+      Serial.println(" - not a directory");
+      return;
+    }
+
+    File file = root.openNextFile();
+    while (file) {
+      if (file.isDirectory()) {
+        Serial.print("  DIR : ");
+        Serial.println(file.name());
+        if(levels){
+          list_dir(file.name(), levels -1);
+        }
+      } else {
+        Serial.print("  FILE: ");
+        Serial.print(file.name());
+        Serial.print("\tSIZE: ");
+        Serial.println(file.size());
+      }
+      file = root.openNextFile();
+    }
 }

@@ -260,7 +260,7 @@ void handleSteer(void) {
 
 static void handle_wifi_controller_status(wifi_controller_status status)
 {
-  ESP_LOGI("Main", "Wifi Controller status: %d\n");
+  ESP_LOGI("Main", "Wifi Controller status: %d\n", status);
   current_wifi_status = status;
   if (status != WIFI_CONTROLLER_CONNECTED) {
     handleIfControllerDisconnected(0);
