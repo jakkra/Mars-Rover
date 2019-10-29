@@ -42,20 +42,20 @@ static void update_arm_positions_timer_cb(void* arg);
 static void write_to_servo(ArmAxis axis, uint16_t us);
 
 static Adafruit_PWMServoDriver servo_driver = Adafruit_PWMServoDriver(0x40, Wire);
-static ArmServo armServos[ARM_NUM_AXIS];
+static ArmServo arm_servos[ARM_NUM_AXIS];
 static esp_timer_handle_t arm_update_timer;
 static xSemaphoreHandle update_axis_sem_handle;
 
 void arm_init()
 {
-  memset(&armServos, 0, sizeof(armServos));
+  memset(&arm_servos, 0, sizeof(arm_servos));
   update_axis_sem_handle = xSemaphoreCreateBinary();
   assert(update_axis_sem_handle != NULL);
   xSemaphoreGive(update_axis_sem_handle);
   
   for (uint8_t i = 0; i < ARM_NUM_AXIS; i++) {
-    vListInitialise((xList*)&armServos[i].path);
-    armServos[i].current_pos = 1500;
+    vListInitialise((xList*)&arm_servos[i].path);
+    arm_servos[i].current_pos = 1500;
   }
 
   servo_driver.begin();
@@ -78,7 +78,7 @@ void arm_init()
 
 void arm_move_axis_us(ArmAxis axisNum, uint16_t pos, uint8_t speed)
 {
-  ArmServo* axis = &armServos[axisNum];
+  ArmServo* axis = &arm_servos[axisNum];
   uint32_t steps_to_move;
   uint32_t internal_speed;
   assert(pos >= DEFAULT_uS_LOW);
@@ -111,12 +111,12 @@ void arm_move(ArmAxis axisNum, uint16_t x, uint16_t y, uint16_t z)
 
 void arm_pause(ArmAxis axisNum)
 {
-  armServos[axisNum].isPaused = true;
+  arm_servos[axisNum].isPaused = true;
 }
 
 void arm_resume(ArmAxis axisNum)
 {
-  armServos[axisNum].isPaused = false;
+  arm_servos[axisNum].isPaused = false;
 }
 
 static void update_arm_positions_timer_cb(void* arg)
@@ -124,7 +124,7 @@ static void update_arm_positions_timer_cb(void* arg)
   ArmServo* axis;
   uint32_t next_servo_pos;
   for (uint8_t i = 0; i < ARM_NUM_AXIS; i++) {
-    axis = &armServos[i];
+    axis = &arm_servos[i];
     if (axis->num_moves == 0) continue;
     if (axis->isPaused) continue;
     

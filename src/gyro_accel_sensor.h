@@ -1,11 +1,12 @@
+#pragma once
 
-typedef struct gyro_accel_val
+typedef struct GyroAccelYpr
 {
   float yaw;
   float pitch;
   float roll;
-} gyro_accel_ypr;
+} GyroAccelYpr;
 
 
 void gyro_accel_init(bool calibrate);
-gyro_accel_ypr gyra_accel_get_current();
+GyroAccelYpr gyro_accel_get_current();

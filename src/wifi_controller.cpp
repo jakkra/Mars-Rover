@@ -29,7 +29,7 @@ static IPAddress subnet(255,255,255,0);
 static WebServer server(80);
 static WebSocketsServer websocket_server = WebSocketsServer(WEBSOCKET_PORT);
 
-static wifi_controller_status_cb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
+static WifiControllerStatusCb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
 static uint8_t num_callbacks;
 
 void wifi_controller_init(const char* ssid, const char* password)
@@ -61,7 +61,7 @@ void wifi_controller_init(const char* ssid, const char* password)
   assert(status == pdPASS);
 }
 
-void register_connection_callback(wifi_controller_status_cb* cb) {
+void register_connection_callback(WifiControllerStatusCb* cb) {
   assert(num_callbacks <= MAX_REGISTRATED_CALLBACKS);
   status_callbacks[num_callbacks] = cb;
   num_callbacks++;

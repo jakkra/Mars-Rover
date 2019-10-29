@@ -5,79 +5,79 @@
 #include "freertos/task.h"
 
 static void check_switch_channels(void* params);
-static void handle_wifi_controller_status(wifi_controller_status status);
+static void handle_wifi_controller_status(WifiControllerStatus status);
 
 static uint32_t interval;
-static RoverModeChanged* modeChangedCallback;
-static ArmModeChanged* armModeCallback;
-static uint16_t roverModeChannel;
-static uint16_t armModeChannel;
+static RoverModeChanged* modec_hanged_callback;
+static ArmModeChanged* arm_mode_callback;
+static uint16_t rover_mode_channel;
+static uint16_t arm_mode_channel;
 
 static bool controller_source_wifi = false;
 
-void init_switch_checker(uint32_t checkIntervalMs, uint16_t roverModeSwitchChannel, uint16_t armModeSwitchChannel, RoverModeChanged* callback, ArmModeChanged* armCallback) {
-    BaseType_t status;
-    TaskHandle_t xHandle = NULL;
-    
-    interval = checkIntervalMs;
-    modeChangedCallback = callback;
-    armModeCallback = armCallback;
-    roverModeChannel = roverModeSwitchChannel;
-    armModeChannel = armModeSwitchChannel;
+void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_channel, uint16_t arm_mode_switch_channel, RoverModeChanged* callback, ArmModeChanged* arm_callback) {
+  BaseType_t status;
+  TaskHandle_t xHandle = NULL;
+  
+  interval = check_interval_ms;
+  modec_hanged_callback = callback;
+  arm_mode_callback = arm_callback;
+  rover_mode_channel = rover_mode_switch_channel;
+  arm_mode_channel = arm_mode_switch_channel;
 
-    register_connection_callback(&handle_wifi_controller_status);
+  register_connection_callback(&handle_wifi_controller_status);
 
-    status = xTaskCreate(check_switch_channels, "SwitchChecker", 2048, NULL, tskIDLE_PRIORITY, &xHandle);
-    assert(status == pdPASS);
+  status = xTaskCreate(check_switch_channels, "SwitchChecker", 2048, NULL, tskIDLE_PRIORITY, &xHandle);
+  assert(status == pdPASS);
 }
 
-static void handle_wifi_controller_status(wifi_controller_status status)
+static void handle_wifi_controller_status(WifiControllerStatus status)
 {
   if (status == WIFI_CONTROLLER_CONNECTED) {
-      controller_source_wifi = true;
+    controller_source_wifi = true;
   } else {
-      controller_source_wifi = false;
+    controller_source_wifi = false;
   }
 }
 
 static void check_switch_channels(void* params)
 {
-    uint16_t signal;
-    RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
-    ArmMode currentArmMode = ARM_MODE_MOVE;
-    RoverMode newRoverMode = currentRoverMode;
-    ArmMode newArmMode = currentArmMode;
+  uint16_t signal;
+  RoverMode current_rover_mode = DRIVE_TURN_NORMAL;
+  ArmMode current_arm_mode = ARM_MODE_MOVE;
+  RoverMode new_rover_mode = current_rover_mode;
+  ArmMode new_arm_mode = current_arm_mode;
 
-    while (true) {
-        if (controller_source_wifi) {
-            signal = wifi_controller_get_val(roverModeChannel);
-        } else {
-            signal = rc_receiver_rmt_get_val(roverModeChannel);
-        }
-        
-        if (signal < 1400) {
-            newRoverMode = DRIVE_TURN_NORMAL;
-        } else if (signal > 1600) {
-            newRoverMode = ROBOT_ARM;
-        } else {
-            newRoverMode = DRIVE_TURN_SPIN;
-        }
-        signal = rc_receiver_rmt_get_val(armModeChannel);
-        if (signal < 1400) {
-            newArmMode = ARM_MODE_MOVE;
-        } else if (signal > 1600) {
-            newArmMode = ARM_MODE_GRIPPER;
-        }
-
-        if (newRoverMode != currentRoverMode) {
-            currentRoverMode = newRoverMode;
-            modeChangedCallback(newRoverMode);
-        }
-
-        if (newArmMode != currentArmMode) {
-            currentArmMode = newArmMode;
-            armModeCallback(newArmMode);
-        }
-        vTaskDelay(interval * (1000 / configTICK_RATE_HZ)); 
+  while (true) {
+    if (controller_source_wifi) {
+      signal = wifi_controller_get_val(rover_mode_channel);
+    } else {
+      signal = rc_receiver_rmt_get_val(rover_mode_channel);
     }
+    
+    if (signal < 1400) {
+      new_rover_mode = DRIVE_TURN_NORMAL;
+    } else if (signal > 1600) {
+      new_rover_mode = ROBOT_ARM;
+    } else {
+      new_rover_mode = DRIVE_TURN_SPIN;
+    }
+    signal = rc_receiver_rmt_get_val(arm_mode_channel);
+    if (signal < 1400) {
+      new_arm_mode = ARM_MODE_MOVE;
+    } else if (signal > 1600) {
+      new_arm_mode = ARM_MODE_GRIPPER;
+    }
+
+    if (new_rover_mode != current_rover_mode) {
+      current_rover_mode = new_rover_mode;
+      modec_hanged_callback(new_rover_mode);
+    }
+
+    if (new_arm_mode != current_arm_mode) {
+      current_arm_mode = new_arm_mode;
+      arm_mode_callback(new_arm_mode);
+    }
+    vTaskDelay(interval * (1000 / configTICK_RATE_HZ)); 
+  }
 }

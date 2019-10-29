@@ -29,11 +29,7 @@
 
 #ifdef DEBUG
 #define LOG Serial.print
-#if defined(ESP8266) || defined(ESP32)
 #define LOGF Serial.printf
-#else 
-#define LOGF(...) 
-#endif
 #define LOGLN Serial.println
 #else
 #define LOG(msg)
@@ -41,7 +37,7 @@
 #define LOGLN(msg)
 #endif
 
-static void handle_wifi_controller_status(wifi_controller_status status);
+static void handle_wifi_controller_status(WifiControllerStatus status);
 
 enum MotorDirection {
   MOTOR_IDLE,
@@ -50,23 +46,23 @@ enum MotorDirection {
 };
 
 static uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
-static uint8_t rcValueIndex = 0;
+static uint8_t rc_value_index = 0;
 
-static MotorDirection motorState = MOTOR_IDLE;
-static RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
-static ArmMode currentArmMode = ARM_MODE_MOVE;
+static MotorDirection motor_state = MOTOR_IDLE;
+static RoverMode current_rover_mode = DRIVE_TURN_NORMAL;
+static ArmMode current_arm_mode = ARM_MODE_MOVE;
 
 static bool wifi_control_enabled = false;
 
-static Servo motorsLeft;
-static Servo motorsRight;
+static Servo motors_left;
+static Servo motors_right;
 
-static Servo frontLeft;
-static Servo frontRight;
-static Servo backLeft;
-static Servo backRight;
+static Servo front_left;
+static Servo front_right;
+static Servo back_left;
+static Servo back_right;
 
-static wifi_controller_status current_wifi_status = WIFI_CONTROLLER_ERROR;
+static WifiControllerStatus current_wifi_status = WIFI_CONTROLLER_ERROR;
 
 
 static uint16_t filter_signal(uint16_t* signals) {
@@ -83,19 +79,19 @@ static uint16_t filter_signal(uint16_t* signals) {
   return signal;;
 }
 
-static void roverModeChanged(RoverMode mode) {
+static void handle_rover_mode_changed(RoverMode mode) {
   LOGF("ROVER MODE CHANGED: %d\n", mode);
-  currentRoverMode = mode;
+  current_rover_mode = mode;
 }
 
-static void armModeChanged(ArmMode mode) {
+static void handle_arm_mode_changed(ArmMode mode) {
   LOGF("ARM MODE CHANGED: %d\n", mode);
-  currentArmMode = mode;
+  current_arm_mode = mode;
 }
 
-static void handleIfControllerDisconnected(uint16_t lastSampledSignal) {
+static void handle_controller_disconnected(uint16_t last_sampled_signal) {
   // Set all RC values to mid position if signal is 0 (controller disconnected)
-  if (lastSampledSignal == 0) {
+  if (last_sampled_signal == 0) {
     for (uint8_t channel = 0; channel < RC_NUM_CHANNELS; channel++) {
       for (uint8_t sample = 0; sample < RC_FILTER_SAMPLES; sample++) {
         rc_values[channel][sample] = 1500;
@@ -110,36 +106,36 @@ void setup() {
     Wire.setClock(400000);
     gyro_accel_init(true);
 
-    handleIfControllerDisconnected(0);
+    handle_controller_disconnected(0);
     
     rc_receiver_rmt_init();
-    init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &roverModeChanged, &armModeChanged);
+    init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     
     wifi_controller_init("rover", NULL);
     register_connection_callback(&handle_wifi_controller_status);
 
-    motorsLeft.attach(12);
-    motorsLeft.writeMicroseconds(1500);
-    motorsRight.attach(13);
-    motorsRight.writeMicroseconds(1500);
+    motors_left.attach(12);
+    motors_left.writeMicroseconds(1500);
+    motors_right.attach(13);
+    motors_right.writeMicroseconds(1500);
 
     // Steering servos
-    frontLeft.attach(14);
-    frontRight.attach(15);
-    backLeft.attach(16);
-    backRight.attach(17);
+    front_left.attach(14);
+    front_right.attach(15);
+    back_left.attach(16);
+    back_right.attach(17);
 
-    frontLeft.writeMicroseconds(1500);
-    frontRight.writeMicroseconds(1500);
-    backLeft.writeMicroseconds(1500);
-    backRight.writeMicroseconds(1500);
+    front_left.writeMicroseconds(1500);
+    front_right.writeMicroseconds(1500);
+    back_left.writeMicroseconds(1500);
+    back_right.writeMicroseconds(1500);
 
     arm_init();
 
     LOGF("Rover Ready! Core: %d", xPortGetCoreID());
 }
 
-static void handleRobotArmServo(ArmAxis arm_axis, uint16_t channel) {
+static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
   
   uint16_t speed;
   uint16_t signal = filter_signal(rc_values[channel]);
@@ -164,46 +160,46 @@ static void setMotorInReverseMode(Servo motor) {
 
 static void handleMoveMotors(uint16_t signal) {
   //LOGLN(signal);
-  switch (currentRoverMode) {
+  switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
         if (signal < 1500 && signal > 0) { // MOTOR_Backward        
           // When going from MOTOR_forward/MOTOR_idle to reverse, motors (ESC) need to be set in reverse mode
-          if (motorState == MOTOR_IDLE) {
-              setMotorInReverseMode(motorsLeft);
-              setMotorInReverseMode(motorsRight);
-              motorState = MOTOR_BACKWARD;
+          if (motor_state == MOTOR_IDLE) {
+              setMotorInReverseMode(motors_left);
+              setMotorInReverseMode(motors_right);
+              motor_state = MOTOR_BACKWARD;
           }
         
       } else if (signal > 1500) {
-        motorState = MOTOR_FORWARD;
+        motor_state = MOTOR_FORWARD;
       } else {
-        motorState = MOTOR_IDLE;
+        motor_state = MOTOR_IDLE;
       }
-      motorsLeft.writeMicroseconds(signal);
-      motorsRight.writeMicroseconds(signal);
+      motors_left.writeMicroseconds(signal);
+      motors_right.writeMicroseconds(signal);
       break;
     case DRIVE_TURN_SPIN:
       {
         uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
 
         if (signal < 1500 && signal > 0) { // Spin Anticlockwise
-          if (motorState == MOTOR_IDLE) {
-            setMotorInReverseMode(motorsLeft);
-            motorState = MOTOR_FORWARD;
+          if (motor_state == MOTOR_IDLE) {
+            setMotorInReverseMode(motors_left);
+            motor_state = MOTOR_FORWARD;
           }
-          motorsRight.writeMicroseconds(1500 + diff);
-          motorsLeft.writeMicroseconds(1500 - diff);
+          motors_right.writeMicroseconds(1500 + diff);
+          motors_left.writeMicroseconds(1500 - diff);
         } else if (signal > 1500) {
-          if (motorState == MOTOR_IDLE) {
-            setMotorInReverseMode(motorsRight);
-            motorState = MOTOR_FORWARD;
+          if (motor_state == MOTOR_IDLE) {
+            setMotorInReverseMode(motors_right);
+            motor_state = MOTOR_FORWARD;
           }
-          motorsRight.writeMicroseconds(1500 - diff); // Spin Clockwise
-          motorsLeft.writeMicroseconds(1500 + diff);
+          motors_right.writeMicroseconds(1500 - diff); // Spin Clockwise
+          motors_left.writeMicroseconds(1500 + diff);
         } else {
-          motorState = MOTOR_IDLE;
-          motorsLeft.writeMicroseconds(signal);
-          motorsRight.writeMicroseconds(signal);
+          motor_state = MOTOR_IDLE;
+          motors_left.writeMicroseconds(signal);
+          motors_right.writeMicroseconds(signal);
         }
         break;
       }
@@ -213,53 +209,53 @@ static void handleMoveMotors(uint16_t signal) {
 
 }
 
-static void steerNormal(uint16_t signal) {
+static void steer_normal(uint16_t signal) {
   uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
   if (signal < 1500 && signal > 0) { // Left turn
-      frontLeft.writeMicroseconds(1500 - diff);
-      frontRight.writeMicroseconds(1500 - diff);
-      backLeft.writeMicroseconds(1500 + diff);
-      backRight.writeMicroseconds(1500 + diff);
+      front_left.writeMicroseconds(1500 - diff);
+      front_right.writeMicroseconds(1500 - diff);
+      back_left.writeMicroseconds(1500 + diff);
+      back_right.writeMicroseconds(1500 + diff);
   } else if (signal > 1500) { // Right turn
-      frontLeft.writeMicroseconds(1500 + diff);
-      frontRight.writeMicroseconds(1500 + diff);
-      backLeft.writeMicroseconds(1500 - diff);
-      backRight.writeMicroseconds(1500 - diff);
+      front_left.writeMicroseconds(1500 + diff);
+      front_right.writeMicroseconds(1500 + diff);
+      back_left.writeMicroseconds(1500 - diff);
+      back_right.writeMicroseconds(1500 - diff);
   } else {
-    frontLeft.writeMicroseconds(1500);
-    frontRight.writeMicroseconds(1500);
-    backLeft.writeMicroseconds(1500);
-    backRight.writeMicroseconds(1500);
+    front_left.writeMicroseconds(1500);
+    front_right.writeMicroseconds(1500);
+    back_left.writeMicroseconds(1500);
+    back_right.writeMicroseconds(1500);
   }
 }
 
-static void steerSpin(uint16_t signal) {
-  frontLeft.writeMicroseconds(2000);
-  frontRight.writeMicroseconds(1000);
-  backLeft.writeMicroseconds(1000);
-  backRight.writeMicroseconds(2000);
+static void steer_spin(uint16_t signal) {
+  front_left.writeMicroseconds(2000);
+  front_right.writeMicroseconds(1000);
+  back_left.writeMicroseconds(1000);
+  back_right.writeMicroseconds(2000);
 }
 
-static void handleSteer(void) {
+static void handle_steer(void) {
   uint16_t signal = filter_signal(rc_values[RC_STEER_CHANNEL]);
-  switch (currentRoverMode) {
+  switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
-      steerNormal(signal);
+      steer_normal(signal);
       break;
     case DRIVE_TURN_SPIN:
-      steerSpin(signal);
+      steer_spin(signal);
       break;
     default:
       break;
   }
 }
 
-static void handle_wifi_controller_status(wifi_controller_status status)
+static void handle_wifi_controller_status(WifiControllerStatus status)
 {
   LOGF("Wifi Controller status: %d\n", status);
   current_wifi_status = status;
   if (status != WIFI_CONTROLLER_CONNECTED) {
-    handleIfControllerDisconnected(0);
+    handle_controller_disconnected(0);
     wifi_control_enabled = false;
   } else {
     wifi_control_enabled = true;
@@ -284,44 +280,44 @@ static uint16_t get_controller_channel_value(uint8_t channel)
 }
 
 void loop() {
-    switch (currentRoverMode) {
+    switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
     {
       uint16_t signal = 1500;
 
-      rc_values[RC_STEER_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_STEER_CHANNEL);
-      rc_values[RC_MOTOR_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_MOTOR_CHANNEL);
+      rc_values[RC_STEER_CHANNEL][rc_value_index] = get_controller_channel_value(RC_STEER_CHANNEL);
+      rc_values[RC_MOTOR_CHANNEL][rc_value_index] = get_controller_channel_value(RC_MOTOR_CHANNEL);
 
-      if (currentRoverMode == DRIVE_TURN_NORMAL) {
+      if (current_rover_mode == DRIVE_TURN_NORMAL) {
         signal = filter_signal(rc_values[RC_MOTOR_CHANNEL]);
-      } else if (currentRoverMode == DRIVE_TURN_SPIN) {
+      } else if (current_rover_mode == DRIVE_TURN_SPIN) {
         signal = filter_signal(rc_values[RC_STEER_CHANNEL]);
       }
       handleMoveMotors(signal);
-      handleSteer();
+      handle_steer();
       break;
     }
     case ROBOT_ARM:
-      if (currentArmMode == ARM_MODE_MOVE) {
-        rc_values[RC_SERVO1_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO1_CHANNEL);
-        rc_values[RC_SERVO2_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO2_CHANNEL);
-        rc_values[RC_SERVO3_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO3_CHANNEL);
-        rc_values[RC_SERVO4_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO4_CHANNEL);
+      if (current_arm_mode == ARM_MODE_MOVE) {
+        rc_values[RC_SERVO1_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO1_CHANNEL);
+        rc_values[RC_SERVO2_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO2_CHANNEL);
+        rc_values[RC_SERVO3_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO3_CHANNEL);
+        rc_values[RC_SERVO4_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO4_CHANNEL);
 
-        handleRobotArmServo(ARM_AXIS_1, RC_SERVO1_CHANNEL);
-        handleRobotArmServo(ARM_AXIS_2, RC_SERVO2_CHANNEL);
-        handleRobotArmServo(ARM_AXIS_3, RC_SERVO3_CHANNEL);
-        handleRobotArmServo(ARM_AXIS_4, RC_SERVO4_CHANNEL);
-      } else if (currentArmMode == ARM_MODE_GRIPPER) {
-        rc_values[RC_SERVO5_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO5_CHANNEL);
-        rc_values[RC_SERVO6_CHANNEL][rcValueIndex] = get_controller_channel_value(RC_SERVO6_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_1, RC_SERVO1_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_2, RC_SERVO2_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_3, RC_SERVO3_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_4, RC_SERVO4_CHANNEL);
+      } else if (current_arm_mode == ARM_MODE_GRIPPER) {
+        rc_values[RC_SERVO5_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO5_CHANNEL);
+        rc_values[RC_SERVO6_CHANNEL][rc_value_index] = get_controller_channel_value(RC_SERVO6_CHANNEL);
 
-        handleRobotArmServo(ARM_AXIS_5, RC_SERVO5_CHANNEL);
-        handleRobotArmServo(ARM_AXIS_6, RC_SERVO6_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_5, RC_SERVO5_CHANNEL);
+        handle_robot_arm_servo(ARM_AXIS_6, RC_SERVO6_CHANNEL);
       }
       break;
   }
-  rcValueIndex = (rcValueIndex + 1) % RC_FILTER_SAMPLES;
+  rc_value_index = (rc_value_index + 1) % RC_FILTER_SAMPLES;
   vTaskDelay(pdMS_TO_TICKS(20));
 }

@@ -17,7 +17,7 @@ static void dmp_data_ready();
 static xSemaphoreHandle update_accel_sem;
 static uint8_t packetSize = 0;
 volatile bool mpu_int_triggered = false;
-static gyro_accel_val current_val;
+static GyroAccelYpr current_val;
 
 MPU6050 mpu;
 
@@ -67,8 +67,8 @@ void gyro_accel_init(bool calibrate) {
   }
 }
 
-gyro_accel_ypr gyra_accel_get_current() {
-  gyro_accel_ypr temp;
+GyroAccelYpr gyro_accel_get_current() {
+  GyroAccelYpr temp;
   xSemaphoreTake(update_accel_sem, portMAX_DELAY);
   memcpy(&temp, &current_val, sizeof(current_val));
   xSemaphoreGive(update_accel_sem);

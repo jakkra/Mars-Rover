@@ -1,3 +1,5 @@
+#pragma once
+
 #define SERIAL_PORT_SPEED 115200
 
 #define RC_NUM_CHANNELS   6
