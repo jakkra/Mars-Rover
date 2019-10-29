@@ -7,9 +7,11 @@
 #include <WebSocketsServer.h>
 #include "esp_log.h"
 
+#define MAX_REGISTRATED_CALLBACKS 2
+#define WEBSOCKET_PORT            81
+
 const char* TAG = "wifi_controller";
 
-static void handle_on_root(void);
 static void handle_not_found(void);
 static void web_server_handler(void* params);
 static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
@@ -19,20 +21,23 @@ static uint16_t channel_values[RC_NUM_CHANNELS] = {0};
 
 static const char* wifi_ssid;
 static const char* wifi_password;
-static wifi_controller_status_cb* status_cb = NULL;
 
 static IPAddress local_ip(192,168,4,1);
 static IPAddress gateway(192,168,1,1);
 static IPAddress subnet(255,255,255,0);
 
 static WebServer server(80);
-static WebSocketsServer websocket_server = WebSocketsServer(81);
+static WebSocketsServer websocket_server = WebSocketsServer(WEBSOCKET_PORT);
 
-void wifi_controller_init(const char* ssid, const char* password, wifi_controller_status_cb* cb)
+static wifi_controller_status_cb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
+static uint8_t num_callbacks;
+
+void wifi_controller_init(const char* ssid, const char* password)
 {
   BaseType_t status;
   TaskHandle_t xHandle = NULL;
   memset(channel_values, 0, sizeof(channel_values));
+  num_callbacks = 0;
 
   if(!SPIFFS.begin(true)){
     Serial.println("SPIFFS Mount Failed");
@@ -45,7 +50,6 @@ void wifi_controller_init(const char* ssid, const char* password, wifi_controlle
   WiFi.softAP(wifi_ssid, wifi_password);
   WiFi.softAPConfig(local_ip, gateway, subnet);
 
-  status_cb = cb;
   server.serveStatic("/", SPIFFS, "/index.html", "");
   server.serveStatic("/virtualjoystick.js", SPIFFS, "/virtualjoystick.js", "");
   server.onNotFound(handle_not_found);
@@ -57,16 +61,16 @@ void wifi_controller_init(const char* ssid, const char* password, wifi_controlle
   assert(status == pdPASS);
 }
 
+void register_connection_callback(wifi_controller_status_cb* cb) {
+  assert(num_callbacks <= MAX_REGISTRATED_CALLBACKS);
+  status_callbacks[num_callbacks] = cb;
+  num_callbacks++;
+}
+
 uint16_t wifi_controller_get_val(uint8_t channel)
 {
   assert(channel < RC_NUM_CHANNELS);
   return channel_values[channel];
-}
-
-static void handle_on_root(void)
-{
-  // TODO create and send JS which connects over websocket to port 81
-  server.send(200, "text/plain", "Ready");
 }
 
 static void handle_not_found(void)
@@ -79,21 +83,22 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
   {
     case WStype_DISCONNECTED:
       printf("Disconnect\n");
-      assert(status_cb != NULL);
       memset(channel_values, 0, sizeof(channel_values));
-      status_cb(WIFI_CONTROLLER_DISCONNECTED);
+      for (uint8_t i = 0; i < num_callbacks; i++) {
+        status_callbacks[i](WIFI_CONTROLLER_DISCONNECTED);
+      }
       break;
     case WStype_CONNECTED:
       printf("Connected\n");
-      assert(status_cb != NULL);
       memset(channel_values, 0, sizeof(channel_values));
-      status_cb(WIFI_CONTROLLER_CONNECTED);
+      for (uint8_t i = 0; i < num_callbacks; i++) {
+        status_callbacks[i](WIFI_CONTROLLER_CONNECTED);
+      }
       break;
     case WStype_TEXT:
       printf("Data: %.*s\n", length, payload);
       break;
     case WStype_BIN:
-      printf("Bin received length: %d\n", length);
       if (length >= RC_NUM_CHANNELS * sizeof(uint16_t)) {
         uint16_t* values = (uint16_t*)payload;
         for (uint8_t i = 0; i < RC_NUM_CHANNELS; i++) {
@@ -107,7 +112,7 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
       } else {
         ESP_LOGI(TAG, "Invalid binary length");
       }
-      printf("%d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3]);
+      printf("%d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
       break;
   default:
     break;

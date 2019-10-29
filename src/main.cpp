@@ -17,7 +17,6 @@
 
 #include <Arduino.h>
 #include "rover_config.h"
-#include "esp_log.h"
 #include <ESP32Servo.h>
 #include "Wire.h"
 #include "rc_receiver_rmt.h"
@@ -25,9 +24,6 @@
 #include "switch_checker.h"
 #include "arm.h"
 #include "gyro_accel_sensor.h"
-
-// TODO: Have this dynamicly changeable
-#define USE_WIFI_FOR_CONTROL
 
 #define DEBUG
 
@@ -53,25 +49,27 @@ enum MotorDirection {
   MOTOR_BACKWARD
 };
 
-uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
-uint8_t rcValueIndex = 0;
+static uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
+static uint8_t rcValueIndex = 0;
 
-MotorDirection motorState = MOTOR_IDLE;
-RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
-ArmMode currentArmMode = ARM_MODE_MOVE;
+static MotorDirection motorState = MOTOR_IDLE;
+static RoverMode currentRoverMode = DRIVE_TURN_NORMAL;
+static ArmMode currentArmMode = ARM_MODE_MOVE;
 
-Servo motorsLeft;
-Servo motorsRight;
+static bool wifi_control_enabled = false;
 
-Servo frontLeft;
-Servo frontRight;
-Servo backLeft;
-Servo backRight;
+static Servo motorsLeft;
+static Servo motorsRight;
+
+static Servo frontLeft;
+static Servo frontRight;
+static Servo backLeft;
+static Servo backRight;
 
 static wifi_controller_status current_wifi_status = WIFI_CONTROLLER_ERROR;
 
 
-uint16_t filter_signal(uint16_t* signals) {
+static uint16_t filter_signal(uint16_t* signals) {
   uint32_t signal = 0;
   for (uint8_t i = 0; i < RC_FILTER_SAMPLES; i++) {
     signal += signals[i];
@@ -85,19 +83,17 @@ uint16_t filter_signal(uint16_t* signals) {
   return signal;;
 }
 
-void roverModeChanged(RoverMode mode) {
-  LOG("ROVER MODE CHANGED: ");
-  LOGLN(mode);
+static void roverModeChanged(RoverMode mode) {
+  LOGF("ROVER MODE CHANGED: %d\n", mode);
   currentRoverMode = mode;
 }
 
-void armModeChanged(ArmMode mode) {
-  LOG("ARM MODE CHANGED: ");
-  LOGLN(mode);
+static void armModeChanged(ArmMode mode) {
+  LOGF("ARM MODE CHANGED: %d\n", mode);
   currentArmMode = mode;
 }
 
-void handleIfControllerDisconnected(uint16_t lastSampledSignal) {
+static void handleIfControllerDisconnected(uint16_t lastSampledSignal) {
   // Set all RC values to mid position if signal is 0 (controller disconnected)
   if (lastSampledSignal == 0) {
     for (uint8_t channel = 0; channel < RC_NUM_CHANNELS; channel++) {
@@ -115,12 +111,13 @@ void setup() {
     gyro_accel_init(true);
 
     handleIfControllerDisconnected(0);
-#ifndef USE_WIFI_FOR_CONTROL
+    
     rc_receiver_rmt_init();
     init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &roverModeChanged, &armModeChanged);
-#else
-  wifi_controller_init("rover", NULL, &handle_wifi_controller_status);
-#endif
+    
+    wifi_controller_init("rover", NULL);
+    register_connection_callback(&handle_wifi_controller_status);
+
     motorsLeft.attach(12);
     motorsLeft.writeMicroseconds(1500);
     motorsRight.attach(13);
@@ -137,13 +134,12 @@ void setup() {
     backLeft.writeMicroseconds(1500);
     backRight.writeMicroseconds(1500);
 
-
     arm_init();
 
-    ESP_LOGI(TAG, "Rover Ready! Core: %d", xPortGetCoreID());
+    LOGF("Rover Ready! Core: %d", xPortGetCoreID());
 }
 
-void handleRobotArmServo(ArmAxis arm_axis, uint16_t channel) {
+static void handleRobotArmServo(ArmAxis arm_axis, uint16_t channel) {
   
   uint16_t speed;
   uint16_t signal = filter_signal(rc_values[channel]);
@@ -159,14 +155,14 @@ void handleRobotArmServo(ArmAxis arm_axis, uint16_t channel) {
   }
 }
 
-void setMotorInReverseMode(Servo motor) {
+static void setMotorInReverseMode(Servo motor) {
   motor.writeMicroseconds(1400);
   delay(100);
   motor.writeMicroseconds(1500);
   delay(100);
 }
 
-void handleMoveMotors(uint16_t signal) {
+static void handleMoveMotors(uint16_t signal) {
   //LOGLN(signal);
   switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
@@ -217,7 +213,7 @@ void handleMoveMotors(uint16_t signal) {
 
 }
 
-void steerNormal(uint16_t signal) {
+static void steerNormal(uint16_t signal) {
   uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
   if (signal < 1500 && signal > 0) { // Left turn
       frontLeft.writeMicroseconds(1500 - diff);
@@ -237,14 +233,14 @@ void steerNormal(uint16_t signal) {
   }
 }
 
-void steerSpin(uint16_t signal) {
+static void steerSpin(uint16_t signal) {
   frontLeft.writeMicroseconds(2000);
   frontRight.writeMicroseconds(1000);
   backLeft.writeMicroseconds(1000);
   backRight.writeMicroseconds(2000);
 }
 
-void handleSteer(void) {
+static void handleSteer(void) {
   uint16_t signal = filter_signal(rc_values[RC_STEER_CHANNEL]);
   switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
@@ -260,10 +256,13 @@ void handleSteer(void) {
 
 static void handle_wifi_controller_status(wifi_controller_status status)
 {
-  ESP_LOGI("Main", "Wifi Controller status: %d\n", status);
+  LOGF("Wifi Controller status: %d\n", status);
   current_wifi_status = status;
   if (status != WIFI_CONTROLLER_CONNECTED) {
     handleIfControllerDisconnected(0);
+    wifi_control_enabled = false;
+  } else {
+    wifi_control_enabled = true;
   }
 }
 
@@ -271,13 +270,11 @@ static uint16_t get_controller_channel_value(uint8_t channel)
 {
   uint16_t channel_value = 0;
 
-  #ifndef USE_WIFI_FOR_CONTROL
+  if (wifi_control_enabled) {
+    channel_value = wifi_controller_get_val(channel);
+  } else {
     channel_value = rc_receiver_rmt_get_val(channel);
-  #else
-    if (current_wifi_status == WIFI_CONTROLLER_CONNECTED) {
-      channel_value = wifi_controller_get_val(channel);
-    }
-  #endif
+  }
 
   if (channel_value == 0) {
     channel_value = 1500;
@@ -287,9 +284,7 @@ static uint16_t get_controller_channel_value(uint8_t channel)
 }
 
 void loop() {
-  
-  return;
-  switch (currentRoverMode) {
+    switch (currentRoverMode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
     {

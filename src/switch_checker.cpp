@@ -1,15 +1,19 @@
 #include "switch_checker.h"
 #include "rc_receiver_rmt.h"
+#include "wifi_controller.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static void check_switch_channels(void* params);
+static void handle_wifi_controller_status(wifi_controller_status status);
 
 static uint32_t interval;
 static RoverModeChanged* modeChangedCallback;
 static ArmModeChanged* armModeCallback;
 static uint16_t roverModeChannel;
 static uint16_t armModeChannel;
+
+static bool controller_source_wifi = false;
 
 void init_switch_checker(uint32_t checkIntervalMs, uint16_t roverModeSwitchChannel, uint16_t armModeSwitchChannel, RoverModeChanged* callback, ArmModeChanged* armCallback) {
     BaseType_t status;
@@ -21,8 +25,19 @@ void init_switch_checker(uint32_t checkIntervalMs, uint16_t roverModeSwitchChann
     roverModeChannel = roverModeSwitchChannel;
     armModeChannel = armModeSwitchChannel;
 
+    register_connection_callback(&handle_wifi_controller_status);
+
     status = xTaskCreate(check_switch_channels, "SwitchChecker", 2048, NULL, tskIDLE_PRIORITY, &xHandle);
     assert(status == pdPASS);
+}
+
+static void handle_wifi_controller_status(wifi_controller_status status)
+{
+  if (status == WIFI_CONTROLLER_CONNECTED) {
+      controller_source_wifi = true;
+  } else {
+      controller_source_wifi = false;
+  }
 }
 
 static void check_switch_channels(void* params)
@@ -34,7 +49,11 @@ static void check_switch_channels(void* params)
     ArmMode newArmMode = currentArmMode;
 
     while (true) {
-        signal = rc_receiver_rmt_get_val(roverModeChannel);
+        if (controller_source_wifi) {
+            signal = wifi_controller_get_val(roverModeChannel);
+        } else {
+            signal = rc_receiver_rmt_get_val(roverModeChannel);
+        }
         
         if (signal < 1400) {
             newRoverMode = DRIVE_TURN_NORMAL;
