@@ -1,14 +1,12 @@
 #include <Arduino.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/list.h"
-#include "ESP32Servo.h"
 #include "arm.h"
 #include "rover_config.h"
 #include "esp_timer.h"
 #include "esp_err.h"
+#include "rover_servo.h"
 
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
 
 #define ARM_UPDATE_INTERVAL_MS  10
 
@@ -38,42 +36,53 @@ typedef struct ArmServo {
   xList         path;
 } ArmServo;
 
-static void update_arm_positions_timer_cb(void* arg);
-static void write_to_servo(ArmAxis axis, uint16_t us);
+static RoverServo axisToServo[ARM_NUM_AXIS] =
+{
+    [ARM_AXIS_1] = SERVO_ARM_AXIS_1,
+    [ARM_AXIS_2] = SERVO_ARM_AXIS_2,
+    [ARM_AXIS_3] = SERVO_ARM_AXIS_3,
+    [ARM_AXIS_4] = SERVO_ARM_AXIS_4,
+    [ARM_AXIS_5] = SERVO_ARM_AXIS_5,
+    [ARM_AXIS_6] = SERVO_ARM_AXIS_6,
+};
 
-static Adafruit_PWMServoDriver servo_driver = Adafruit_PWMServoDriver(0x40, Wire);
+static void update_arm_positions_timer_cb(void* arg);
+
 static ArmServo arm_servos[ARM_NUM_AXIS];
 static esp_timer_handle_t arm_update_timer;
 static xSemaphoreHandle update_axis_sem_handle;
+static bool isInitialized = false;
+
 
 void arm_init()
 {
-  memset(&arm_servos, 0, sizeof(arm_servos));
-  update_axis_sem_handle = xSemaphoreCreateBinary();
-  assert(update_axis_sem_handle != NULL);
-  xSemaphoreGive(update_axis_sem_handle);
-  
-  for (uint8_t i = 0; i < ARM_NUM_AXIS; i++) {
-    vListInitialise((xList*)&arm_servos[i].path);
-    arm_servos[i].current_pos = 1500;
+
+  if (!isInitialized) {
+    isInitialized = true;
+    memset(&arm_servos, 0, sizeof(arm_servos));
+    update_axis_sem_handle = xSemaphoreCreateBinary();
+    assert(update_axis_sem_handle != NULL);
+    xSemaphoreGive(update_axis_sem_handle);
+    
+    for (uint8_t i = 0; i < ARM_NUM_AXIS; i++) {
+      vListInitialise((xList*)&arm_servos[i].path);
+      arm_servos[i].current_pos = 1500;
+    }
+
+    rover_servo_write(axisToServo[ARM_AXIS_1], 1900);
+    rover_servo_write(axisToServo[ARM_AXIS_2], 1600);
+    rover_servo_write(axisToServo[ARM_AXIS_3], 1200);
+    rover_servo_write(axisToServo[ARM_AXIS_4], 1200);
+    rover_servo_write(axisToServo[ARM_AXIS_5], 1500);
+    rover_servo_write(axisToServo[ARM_AXIS_6], 1500);
+
+    esp_timer_create_args_t periodic_timer_args;
+    periodic_timer_args.callback = &update_arm_positions_timer_cb;
+    periodic_timer_args.name = "update_arm_servo";
+
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &arm_update_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(arm_update_timer, ARM_UPDATE_INTERVAL_MS * 1000));
   }
-
-  servo_driver.begin();
-  servo_driver.setPWMFreq(60);
-
-  write_to_servo(ARM_AXIS_1, 1500);
-  write_to_servo(ARM_AXIS_2, 1000);
-  write_to_servo(ARM_AXIS_3, 1300);
-  write_to_servo(ARM_AXIS_4, 1500);
-  write_to_servo(ARM_AXIS_5, 1500);
-  write_to_servo(ARM_AXIS_6, 1500);
-  
-  esp_timer_create_args_t periodic_timer_args;
-  periodic_timer_args.callback = &update_arm_positions_timer_cb;
-  periodic_timer_args.name = "update_arm_servo";
-
-  ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &arm_update_timer));
-  ESP_ERROR_CHECK(esp_timer_start_periodic(arm_update_timer, ARM_UPDATE_INTERVAL_MS * 1000));
 }
 
 void arm_move_axis_us(ArmAxis axisNum, uint16_t pos, uint8_t speed)
@@ -81,8 +90,8 @@ void arm_move_axis_us(ArmAxis axisNum, uint16_t pos, uint8_t speed)
   ArmServo* axis = &arm_servos[axisNum];
   uint32_t steps_to_move;
   uint32_t internal_speed;
-  assert(pos >= DEFAULT_uS_LOW);
-  assert(pos <= DEFAULT_uS_HIGH);
+  assert(pos >= 1000);
+  assert(pos <= 2000);
   assert(speed >= ARM_MIN_SPEED);
   assert(speed <= ARM_MAX_SPEED);
   internal_speed = ARM_MAX_SPEED + 1 - speed; // Speed is inverted internally 1 fastest, 10 slowest
@@ -146,17 +155,9 @@ static void update_arm_positions_timer_cb(void* arg)
         axis->current_pos = axis->current_pos - axis->steps_per_move;
       }
       xSemaphoreGive(update_axis_sem_handle);
-      write_to_servo((ArmAxis)i, next_servo_pos);
+      rover_servo_write(axisToServo[i], next_servo_pos);
     } else {
       xSemaphoreGive(update_axis_sem_handle);
     }
   }
-}
-
-static void write_to_servo(ArmAxis axis, uint16_t us)
-{
-  assert(us >= 1000);
-  assert(us <= 2000);
-  uint16_t pwm_value = map(us, 1000, 2000, SERVOMIN, SERVOMAX);
-  servo_driver.setPWM((uint8_t)axis, 0, pwm_value);
 }

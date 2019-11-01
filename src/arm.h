@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ESP32Servo.h>
+#include "rover_servo.h"
 
 #define ARM_MAX_SPEED 10
 #define ARM_MIN_SPEED 1
