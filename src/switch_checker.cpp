@@ -8,7 +8,7 @@ static void check_switch_channels(void* params);
 static void handle_wifi_controller_status(WifiControllerStatus status);
 
 static uint32_t interval;
-static RoverModeChanged* modec_hanged_callback;
+static RoverModeChanged* mode_changed_callback;
 static ArmModeChanged* arm_mode_callback;
 static uint16_t rover_mode_channel;
 static uint16_t arm_mode_channel;
@@ -20,7 +20,7 @@ void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_
   TaskHandle_t xHandle = NULL;
   
   interval = check_interval_ms;
-  modec_hanged_callback = callback;
+  mode_changed_callback = callback;
   arm_mode_callback = arm_callback;
   rover_mode_channel = rover_mode_switch_channel;
   arm_mode_channel = arm_mode_switch_channel;
@@ -62,7 +62,13 @@ static void check_switch_channels(void* params)
     } else {
       new_rover_mode = DRIVE_TURN_SPIN;
     }
-    signal = rc_receiver_rmt_get_val(arm_mode_channel);
+    
+    if (controller_source_wifi) {
+      signal = wifi_controller_get_val(arm_mode_channel);
+    } else {
+      signal = rc_receiver_rmt_get_val(arm_mode_channel);
+    }
+
     if (signal < 1400) {
       new_arm_mode = ARM_MODE_MOVE;
     } else if (signal > 1600) {
@@ -71,7 +77,7 @@ static void check_switch_channels(void* params)
 
     if (new_rover_mode != current_rover_mode) {
       current_rover_mode = new_rover_mode;
-      modec_hanged_callback(new_rover_mode);
+      mode_changed_callback(new_rover_mode);
     }
 
     if (new_arm_mode != current_arm_mode) {
