@@ -10,6 +10,31 @@
       margin		: 0;
       background-color: rgb(56, 44, 44);
     }
+    .btn {
+      box-shadow:inset 0px 2px 0px 0px #cf866c;
+      background-color:#b37d6e;
+      border-radius:10px;
+      border:1px solid #942911;
+      display:inline-block;
+      cursor:pointer;
+      color:#e3e3e3;
+      font-family:Arial;
+      font-size:13px;
+      padding:6px 24px;
+      text-decoration:none;
+      text-shadow:0px 1px 0px #854629;
+      font-family: "Arial Black", Gadget, sans-serif
+    }
+    .btn:hover {
+      background-color:#a65849;
+    }
+    .btn:active {
+      position:relative;
+      top:1px;
+    }
+    #resultLeft, #resultRight {
+      font-family: "Arial Black", Gadget, sans-serif
+    }
     #info {
       position	: absolute;
       top		: 0px;
@@ -32,25 +57,28 @@
   <body>
     <div id="container"></div>
     <div id="info">
-      Rover
       <br/>
+      <button class="btn" value="Normal" onclick="onModeChange(this.value)">Normal</button>
+      <button class="btn" value="Spin" onclick="onModeChange(this.value)">Spin</button>
+      <button class="btn" value="Arm" onclick="onModeChange(this.value)">Arm</button>
+      <button class="btn" value="Gripper" onclick="onModeChange(this.value)">Gripper</button>
+      <p></p>
       <span id="resultLeft"></span> <span id="resultRight"></span>
     </div> 
-    <!-- 
-      <script src="file:/C:/Users/ijakk_000/Documents/Rover-code/data/virtualjoystick.js"></script>
-    -->
     <script src="virtualjoystick.js"></script>
     <script>
       const map = (value, x1, y1, x2, y2) => (value - x1) * (y2 - x2) / (y1 - x1) + x2;
       var roverConnected = false;
       var timer = null;
+      var switchRoverMode = 1000;
+      var switchArmMode = 1500;
       var connection = new WebSocket('ws://192.168.4.1:81');
+
       console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
       
       connection.onopen = function () {
         console.log("Websocket Open");
         roverConnected = true;
-        timer = setInterval(sendData, 250);
       };
 
       connection.onerror = function (error) {
@@ -73,37 +101,37 @@
           roverConnected = false;
       };
 
-      var joystickLeft	= new VirtualJoystick({
+      var joystickRight	= new VirtualJoystick({
         container	: document.getElementById('container'),
         strokeStyle	: 'cyan',
         mouseSupport	: true,
         limitStickTravel: true,
       });
 
-      joystickLeft.addEventListener('touchStartValidation', function(event) {
+      joystickRight.addEventListener('touchStartValidation', function(event) {
         var touch	= event.changedTouches[0];
         if (touch.pageX < window.innerWidth / 2)	return false;
         return true
       });
 
-      joystickLeft.addEventListener('touchEnd', function() {
+      joystickRight.addEventListener('touchEnd', function() {
 
       });
 
-      var joystickRight	= new VirtualJoystick({
+      var joystickLeft	= new VirtualJoystick({
         container	: document.getElementById('container'),
         strokeStyle	: 'orange',
         mouseSupport	: true,
         limitStickTravel: true,
       });
 
-      joystickRight.addEventListener('touchStartValidation', function(event) {
+      joystickLeft.addEventListener('touchStartValidation', function(event) {
         var touch	= event.changedTouches[0];
         if (touch.pageX >= window.innerWidth / 2)	return false;
         return true
       });
 
-      joystickRight.addEventListener('touchEnd', function() {
+      joystickLeft.addEventListener('touchEnd', function() {
 
       });
 
@@ -119,10 +147,12 @@
         channelValues[1] = map(yLeft, -100, 100, 1000, 2000);;
         channelValues[2] = map(xRight, -100, 100, 1000, 2000);;
         channelValues[3] = map(yRight, -100, 100, 1000, 2000);;
-        channelValues[4] = 1500;
-        channelValues[5] = 1500;
+        channelValues[4] = switchArmMode;
+        channelValues[5] = switchRoverMode;
         console.log(channelValues);
-        connection.send(channelValues);
+        if (roverConnected) {
+          connection.send(channelValues);
+        }
 
         var outputEl	= document.getElementById('resultLeft');
         var outputE2	= document.getElementById('resultRight');
@@ -130,9 +160,35 @@
           + ' dx:' + xLeft
           + ' dy:' + yLeft
         outputE2.innerHTML	= '<b>Right:</b> '
-          + ' dx:' + xLeft
-          + ' dy:' + yLeft
+          + ' dx:' + xRight
+          + ' dy:' + yRight
       };
+
+      timer = setInterval(sendData, 100);
+
+      function onModeChange(mode) {
+        switch (mode) {
+          case 'Normal':
+            switchRoverMode = 1000;
+            switchArmMode = 1500;
+            break;
+          case 'Spin':
+            switchRoverMode = 1500;
+            switchArmMode = 1500;
+            break;
+          case 'Arm':
+            switchRoverMode = 2000;
+            switchArmMode = 1000;
+            break;
+          case 'Gripper':
+            switchRoverMode = 2000;
+            switchArmMode = 2000;
+            break;
+          default:
+            break;
+        }
+        sendData();
+      }
 
     </script>
   </body>
