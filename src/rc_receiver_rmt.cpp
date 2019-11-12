@@ -55,7 +55,7 @@ void rc_receiver_rmt_init(void)
   rmt_config_t rmt_channels[RC_NUM_CHANNELS] = {};
 
   for (i = 0; i < RC_NUM_CHANNELS; i++) {
-    channel_values[i] = RECEIVER_CH_CENTER;
+    channel_values[i] = RC_CENTER;
 
     rmt_channels[i].channel = (rmt_channel_t) RECEIVER_CHANNELS[i];
     rmt_channels[i].gpio_num = (gpio_num_t) RECEIVER_GPIOS[i];

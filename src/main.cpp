@@ -73,10 +73,10 @@ static uint16_t filter_signal(uint16_t* signals) {
   }
   signal = signal / RC_FILTER_SAMPLES;
   
-  if (signal <= 800) return 1500; // If we are unlucky in timing when controller disconnect we might get some random low signal
-  if (signal > 800 && signal < 1010) return 1000;
-  if (signal > 1990) return 2000;
-  if (signal > 1480 && signal < 1520) return 1500;
+  if (signal <= 800) return RC_CENTER; // If we are unlucky in timing when controller disconnect we might get some random low signal
+  if (signal > 800 && signal < 1010) return RC_LOW;
+  if (signal > 1990) return RC_HIGH;
+  if (signal > 1480 && signal < 1520) return RC_CENTER;
   return signal;;
 }
 
@@ -95,7 +95,7 @@ static void handle_controller_disconnected(uint16_t last_sampled_signal) {
   if (last_sampled_signal == 0) {
     for (uint8_t channel = 0; channel < RC_NUM_CHANNELS; channel++) {
       for (uint8_t sample = 0; sample < RC_FILTER_SAMPLES; sample++) {
-        rc_values[channel][sample] = 1500;
+        rc_values[channel][sample] = RC_CENTER;
       }
     }
   }
@@ -103,7 +103,7 @@ static void handle_controller_disconnected(uint16_t last_sampled_signal) {
 
 void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
-    Wire.begin(22, 27);
+    Wire.begin(ROVER_SDA_PIN, ROVER_SCL_PIN);
     Wire.setClock(400000);
 
     //gyro_accel_init(true);
@@ -111,21 +111,21 @@ void setup() {
     handle_controller_disconnected(0);
 
     rc_receiver_rmt_init();
-    init_switch_checker(1000, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
+    init_switch_checker(RC_LOW, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     
     wifi_controller_init("rover", NULL);
     register_connection_callback(&handle_wifi_controller_status);
 
-    motors_left.attach(12);
-    motors_left.writeMicroseconds(1500);
-    motors_right.attach(13);
-    motors_right.writeMicroseconds(1500);
+    motors_left.attach(ROVER_MOTORS_LEFT_PIN);
+    motors_left.writeMicroseconds(RC_CENTER);
+    motors_right.attach(ROVER_MOTORS_RIGHT_PIN);
+    motors_right.writeMicroseconds(RC_CENTER);
 
     // Steering servos
-    rover_servo_write(SERVO_FRONT_LEFT, 1500);
-    rover_servo_write(SERVO_FRONT_RIGHT, 1500);
-    rover_servo_write(SERVO_BACK_LEFT, 1500);
-    rover_servo_write(SERVO_BACK_RIGHT, 1500);
+    rover_servo_write(SERVO_FRONT_LEFT, RC_CENTER);
+    rover_servo_write(SERVO_FRONT_RIGHT, RC_CENTER);
+    rover_servo_write(SERVO_BACK_LEFT, RC_CENTER);
+    rover_servo_write(SERVO_BACK_RIGHT, RC_CENTER);
 
     arm_init();
 
@@ -136,13 +136,13 @@ static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
   
   uint16_t speed;
   uint16_t signal = filter_signal(rc_values[channel]);
-  if (signal < 1500 && signal > 0) {
-    signal = 2 * 1500 - signal;
-    speed = map(signal, 1500, 2000, ARM_MIN_SPEED, ARM_MAX_SPEED);
-    arm_move_axis_us(arm_axis, 1000, speed);
-  } else if (signal > 1500) {
-    speed = map(signal, 1500, 2000, ARM_MIN_SPEED, ARM_MAX_SPEED);
-    arm_move_axis_us(arm_axis, 2000, speed);
+  if (signal < RC_CENTER && signal > 0) {
+    signal = 2 * RC_CENTER - signal;
+    speed = map(signal, RC_CENTER, RC_HIGH, ARM_MIN_SPEED, ARM_MAX_SPEED);
+    arm_move_axis_us(arm_axis, RC_LOW, speed);
+  } else if (signal > RC_CENTER) {
+    speed = map(signal, RC_CENTER, RC_HIGH, ARM_MIN_SPEED, ARM_MAX_SPEED);
+    arm_move_axis_us(arm_axis, RC_HIGH, speed);
   } else {
     arm_pause(arm_axis);
   }
@@ -151,7 +151,7 @@ static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
 static void setMotorInReverseMode(Servo motor) {
   motor.writeMicroseconds(1400);
   delay(100);
-  motor.writeMicroseconds(1500);
+  motor.writeMicroseconds(RC_CENTER);
   delay(100);
 }
 
@@ -159,7 +159,7 @@ static void handleMoveMotors(uint16_t signal) {
   //LOGLN(signal);
   switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
-        if (signal < 1500 && signal > 0) { // MOTOR_Backward        
+        if (signal < RC_CENTER && signal > 0) { // MOTOR_Backward        
           // When going from MOTOR_forward/MOTOR_idle to reverse, motors (ESC) need to be set in reverse mode
           if (motor_state == MOTOR_IDLE) {
               setMotorInReverseMode(motors_left);
@@ -167,7 +167,7 @@ static void handleMoveMotors(uint16_t signal) {
               motor_state = MOTOR_BACKWARD;
           }
         
-      } else if (signal > 1500) {
+      } else if (signal > RC_CENTER) {
         motor_state = MOTOR_FORWARD;
       } else {
         motor_state = MOTOR_IDLE;
@@ -177,22 +177,22 @@ static void handleMoveMotors(uint16_t signal) {
       break;
     case DRIVE_TURN_SPIN:
       {
-        uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
+        uint16_t diff = abs((int16_t)RC_CENTER - (int16_t)signal);
 
-        if (signal < 1500 && signal > 0) { // Spin Anticlockwise
+        if (signal < RC_CENTER && signal > 0) { // Spin Anticlockwise
           if (motor_state == MOTOR_IDLE) {
             setMotorInReverseMode(motors_left);
             motor_state = MOTOR_FORWARD;
           }
-          motors_right.writeMicroseconds(1500 + diff);
-          motors_left.writeMicroseconds(1500 - diff);
-        } else if (signal > 1500) {
+          motors_right.writeMicroseconds(RC_CENTER + diff);
+          motors_left.writeMicroseconds(RC_CENTER - diff);
+        } else if (signal > RC_CENTER) {
           if (motor_state == MOTOR_IDLE) {
             setMotorInReverseMode(motors_right);
             motor_state = MOTOR_FORWARD;
           }
-          motors_right.writeMicroseconds(1500 - diff); // Spin Clockwise
-          motors_left.writeMicroseconds(1500 + diff);
+          motors_right.writeMicroseconds(RC_CENTER - diff); // Spin Clockwise
+          motors_left.writeMicroseconds(RC_CENTER + diff);
         } else {
           motor_state = MOTOR_IDLE;
           motors_left.writeMicroseconds(signal);
@@ -207,30 +207,30 @@ static void handleMoveMotors(uint16_t signal) {
 }
 
 static void steer_normal(uint16_t signal) {
-  uint16_t diff = abs((int16_t)1500 - (int16_t)signal);
-  if (signal < 1500 && signal > 0) { // Left turn
-      rover_servo_write(SERVO_FRONT_LEFT, 1500 - diff);
-      rover_servo_write(SERVO_FRONT_RIGHT, 1500 - diff);
-      rover_servo_write(SERVO_BACK_LEFT, 1500 + diff);
-      rover_servo_write(SERVO_BACK_RIGHT, 1500 + diff);
-  } else if (signal > 1500) { // Right turn
-      rover_servo_write(SERVO_FRONT_LEFT, 1500 + diff);
-      rover_servo_write(SERVO_FRONT_RIGHT, 1500 + diff);
-      rover_servo_write(SERVO_BACK_LEFT, 1500 - diff);
-      rover_servo_write(SERVO_BACK_RIGHT, 1500 - diff);
+  uint16_t diff = abs((int16_t)RC_CENTER - (int16_t)signal);
+  if (signal < RC_CENTER && signal > 0) { // Left turn
+      rover_servo_write(SERVO_FRONT_LEFT, RC_CENTER - diff);
+      rover_servo_write(SERVO_FRONT_RIGHT, RC_CENTER - diff);
+      rover_servo_write(SERVO_BACK_LEFT, RC_CENTER + diff);
+      rover_servo_write(SERVO_BACK_RIGHT, RC_CENTER + diff);
+  } else if (signal > RC_CENTER) { // Right turn
+      rover_servo_write(SERVO_FRONT_LEFT, RC_CENTER + diff);
+      rover_servo_write(SERVO_FRONT_RIGHT, RC_CENTER + diff);
+      rover_servo_write(SERVO_BACK_LEFT, RC_CENTER - diff);
+      rover_servo_write(SERVO_BACK_RIGHT, RC_CENTER - diff);
   } else {
-    rover_servo_write(SERVO_FRONT_LEFT, 1500);
-    rover_servo_write(SERVO_FRONT_RIGHT, 1500);
-    rover_servo_write(SERVO_BACK_LEFT, 1500);
-    rover_servo_write(SERVO_BACK_RIGHT, 1500);
+    rover_servo_write(SERVO_FRONT_LEFT, RC_CENTER);
+    rover_servo_write(SERVO_FRONT_RIGHT, RC_CENTER);
+    rover_servo_write(SERVO_BACK_LEFT, RC_CENTER);
+    rover_servo_write(SERVO_BACK_RIGHT, RC_CENTER);
   }
 }
 
 static void steer_spin(uint16_t signal) {
-  rover_servo_write(SERVO_FRONT_LEFT, 2000);
-  rover_servo_write(SERVO_FRONT_RIGHT, 1000);
-  rover_servo_write(SERVO_BACK_LEFT, 1000);
-  rover_servo_write(SERVO_BACK_RIGHT, 2000);
+  rover_servo_write(SERVO_FRONT_LEFT, RC_HIGH);
+  rover_servo_write(SERVO_FRONT_RIGHT, RC_LOW);
+  rover_servo_write(SERVO_BACK_LEFT, RC_LOW);
+  rover_servo_write(SERVO_BACK_RIGHT, RC_HIGH);
 }
 
 static void handle_steer(void) {
@@ -270,7 +270,7 @@ static uint16_t get_controller_channel_value(uint8_t channel)
   }
 
   if (channel_value == 0) {
-    channel_value = 1500;
+    channel_value = RC_CENTER;
   }
 
   return channel_value;
@@ -281,7 +281,7 @@ void loop() {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
     {
-      uint16_t signal = 1500;
+      uint16_t signal = RC_CENTER;
 
       rc_values[RC_STEER_CHANNEL][rc_value_index] = get_controller_channel_value(RC_STEER_CHANNEL);
       rc_values[RC_MOTOR_CHANNEL][rc_value_index] = get_controller_channel_value(RC_MOTOR_CHANNEL);

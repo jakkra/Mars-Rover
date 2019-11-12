@@ -3,6 +3,7 @@
 #include "wifi_controller.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "rover_config.h"
 
 static void check_switch_channels(void* params);
 static void handle_wifi_controller_status(WifiControllerStatus status);
@@ -55,9 +56,9 @@ static void check_switch_channels(void* params)
       signal = rc_receiver_rmt_get_val(rover_mode_channel);
     }
     
-    if (signal < 1400) {
+    if (signal < RC_CENTER - 100) {
       new_rover_mode = DRIVE_TURN_NORMAL;
-    } else if (signal > 1600) {
+    } else if (signal > RC_CENTER + 100) {
       new_rover_mode = ROBOT_ARM;
     } else {
       new_rover_mode = DRIVE_TURN_SPIN;
@@ -69,9 +70,9 @@ static void check_switch_channels(void* params)
       signal = rc_receiver_rmt_get_val(arm_mode_channel);
     }
 
-    if (signal < 1400) {
+    if (signal < RC_CENTER - 100) {
       new_arm_mode = ARM_MODE_MOVE;
-    } else if (signal > 1600) {
+    } else if (signal > RC_CENTER + 100) {
       new_arm_mode = ARM_MODE_GRIPPER;
     }
 

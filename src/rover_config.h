@@ -5,7 +5,9 @@
 #define RC_NUM_CHANNELS   6
 #define RC_FILTER_SAMPLES 2
 
-#define RECEIVER_CH_CENTER 1500
+#define RC_LOW    1000
+#define RC_CENTER 1500
+#define RC_HIGH   2000
 
 #define RC_CH1  0
 #define RC_CH2  1
@@ -54,3 +56,6 @@
 
 #define SERVOMIN  150 // this is the 'minimum' pulse length count (out of 4096)
 #define SERVOMAX  600 // this is the 'maximum' pulse length count (out of 4096)
+
+#define ROVER_MOTORS_LEFT_PIN       12
+#define ROVER_MOTORS_RIGHT_PIN      13

@@ -66,9 +66,10 @@ void arm_init()
     
     for (uint8_t i = 0; i < ARM_NUM_AXIS; i++) {
       vListInitialise((xList*)&arm_servos[i].path);
-      arm_servos[i].current_pos = 1500;
+      arm_servos[i].current_pos = RC_CENTER;
     }
 
+    // Initial position
     rover_servo_write(axisToServo[ARM_AXIS_1], 1900);
     rover_servo_write(axisToServo[ARM_AXIS_2], 1600);
     rover_servo_write(axisToServo[ARM_AXIS_3], 1200);
@@ -90,8 +91,8 @@ void arm_move_axis_us(ArmAxis axisNum, uint16_t pos, uint8_t speed)
   ArmServo* axis = &arm_servos[axisNum];
   uint32_t steps_to_move;
   uint32_t internal_speed;
-  assert(pos >= 1000);
-  assert(pos <= 2000);
+  assert(pos >= RC_LOW);
+  assert(pos <= RC_HIGH);
   assert(speed >= ARM_MIN_SPEED);
   assert(speed <= ARM_MAX_SPEED);
   internal_speed = ARM_MAX_SPEED + 1 - speed; // Speed is inverted internally 1 fastest, 10 slowest
