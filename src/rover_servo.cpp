@@ -12,6 +12,8 @@
 
 #define ADAFRUIT_PWM_EXPANDER_ADDR  0x40
 
+SemaphoreHandle_t semaphore;
+
 
 static Adafruit_PWMServoDriver servo_driver = Adafruit_PWMServoDriver(ADAFRUIT_PWM_EXPANDER_ADDR, Wire);
 static bool isInitialized = false;
@@ -21,6 +23,9 @@ void rover_servo_init() {
     isInitialized = true;
     servo_driver.begin();
     servo_driver.setPWMFreq(60);
+    semaphore = xSemaphoreCreateBinary();
+    assert(semaphore);
+    xSemaphoreGive(semaphore);
   }
 }
 
@@ -29,6 +34,8 @@ void rover_servo_write(RoverServo axis, uint16_t us)
   // TODO need Semaphore here as different tasks can use this function
   assert(us >= RC_LOW);
   assert(us <= RC_HIGH);
+  xSemaphoreTake(semaphore, portMAX_DELAY);
   uint16_t pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN, SERVOMAX);
   servo_driver.setPWM((uint8_t)axis, 0, pwm_value);
+  xSemaphoreGive(semaphore);
 }
