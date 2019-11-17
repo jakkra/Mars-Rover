@@ -229,8 +229,8 @@ static void steer_normal(uint16_t signal) {
 static void steer_spin(uint16_t signal) {
   rover_servo_write(SERVO_FRONT_LEFT, RC_HIGH);
   rover_servo_write(SERVO_FRONT_RIGHT, RC_LOW);
-  rover_servo_write(SERVO_BACK_LEFT, RC_LOW);
-  rover_servo_write(SERVO_BACK_RIGHT, RC_HIGH);
+  rover_servo_write(SERVO_BACK_LEFT, RC_HIGH);
+  rover_servo_write(SERVO_BACK_RIGHT, RC_LOW);
 }
 
 static void handle_steer(void) {

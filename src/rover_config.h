@@ -44,8 +44,8 @@
 #define RC_SERVO5_CHANNEL RC_CH1
 #define RC_SERVO6_CHANNEL RC_CH2
 
-#define RC_ARM_MODE_ROVER_CHANNEL   RC_CH5
-#define RC_ROVER_MODE_ROVER_CHANNEL RC_CH6
+#define RC_ROVER_MODE_ROVER_CHANNEL RC_CH5
+#define RC_ARM_MODE_ROVER_CHANNEL   RC_CH6
 
 
 #define ARM_NUM_AXIS 6
@@ -60,7 +60,7 @@
 #define SERVOMIN_FULL_RANGE  150 // this is the 'minimum' pulse length count (out of 4096)
 #define SERVOMAX_FULL_RANGE  600 // this is the 'maximum' pulse length count (out of 4096)
 
-#define ROVER_MOTORS_LEFT_PIN       12
+#define ROVER_MOTORS_LEFT_PIN       17
 #define ROVER_MOTORS_RIGHT_PIN      13
 
-static uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW };
+static uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW, RC_CENTER };

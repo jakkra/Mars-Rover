@@ -146,8 +146,8 @@
         channelValues[1] = map(yLeft, -100, 100, 1000, 2000);;
         channelValues[2] = map(xRight, -100, 100, 1000, 2000);;
         channelValues[3] = map(yRight, -100, 100, 1000, 2000);;
-        channelValues[4] = switchArmMode;
-        channelValues[5] = switchRoverMode;
+        channelValues[4] = switchRoverMode;
+        channelValues[5] = switchArmMode;
         console.log(channelValues);
         if (roverConnected) {
           connection.send(channelValues);
