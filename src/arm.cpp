@@ -70,12 +70,12 @@ void arm_init()
     }
 
     // Initial position
-    rover_servo_write(axisToServo[ARM_AXIS_1], 1900);
-    rover_servo_write(axisToServo[ARM_AXIS_2], 1600);
-    rover_servo_write(axisToServo[ARM_AXIS_3], 1200);
-    rover_servo_write(axisToServo[ARM_AXIS_4], 1200);
-    rover_servo_write(axisToServo[ARM_AXIS_5], 1500);
-    rover_servo_write(axisToServo[ARM_AXIS_6], 1500);
+    rover_servo_write(axisToServo[ARM_AXIS_1], 1900, true);
+    rover_servo_write(axisToServo[ARM_AXIS_2], 1600, true);
+    rover_servo_write(axisToServo[ARM_AXIS_3], 1200, true);
+    rover_servo_write(axisToServo[ARM_AXIS_4], 1200, true);
+    rover_servo_write(axisToServo[ARM_AXIS_5], 1500, true);
+    rover_servo_write(axisToServo[ARM_AXIS_6], 1500, true);
 
     esp_timer_create_args_t periodic_timer_args;
     periodic_timer_args.callback = &update_arm_positions_timer_cb;
@@ -156,7 +156,7 @@ static void update_arm_positions_timer_cb(void* arg)
         axis->current_pos = axis->current_pos - axis->steps_per_move;
       }
       xSemaphoreGive(update_axis_sem_handle);
-      rover_servo_write(axisToServo[i], next_servo_pos);
+      rover_servo_write(axisToServo[i], next_servo_pos, true);
     } else {
       xSemaphoreGive(update_axis_sem_handle);
     }

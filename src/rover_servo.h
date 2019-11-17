@@ -17,4 +17,4 @@ typedef enum RoverServo {
 } RoverServo;
 
 void rover_servo_init();
-void rover_servo_write(RoverServo axis, uint16_t us);
+void rover_servo_write(RoverServo axis, uint16_t us, bool full_range = false);

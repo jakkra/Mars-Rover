@@ -29,13 +29,17 @@ void rover_servo_init() {
   }
 }
 
-void rover_servo_write(RoverServo axis, uint16_t us)
+void rover_servo_write(RoverServo axis, uint16_t us, bool full_range)
 {
-  // TODO need Semaphore here as different tasks can use this function
   assert(us >= RC_LOW);
   assert(us <= RC_HIGH);
   xSemaphoreTake(semaphore, portMAX_DELAY);
-  uint16_t pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN, SERVOMAX);
+  uint16_t pwm_value;
+  if (full_range) {
+    pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN_FULL_RANGE, SERVOMAX_FULL_RANGE);
+  } else {
+    pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN, SERVOMAX);
+  }
   servo_driver.setPWM((uint8_t)axis, 0, pwm_value);
   xSemaphoreGive(semaphore);
 }
