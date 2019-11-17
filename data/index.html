@@ -141,14 +141,28 @@
         var xRight = Math.round(joystickRight.deltaX());
         var yRight = Math.round(joystickRight.deltaY() * - 1);
 
+         // If Normal Rover Drive mode use right joystick for steering
+         // and left for forward/backward and ignore other value.
+         // Makes it a bit easier to drive and to avoid accidentally
+         // going forward when you want to just steer.
+        if (switchRoverMode == 1000) {
+          channelValues[0] = map(xRight, -100, 100, 1000, 2000);;
+          channelValues[1] = map(yLeft, -100, 100, 1000, 2000);
+          channelValues[2] = 1500; //map(xLeft, -100, 100, 1000, 2000);
+          channelValues[3] = 1500; //map(yLeft, -100, 100, 1000, 2000);;
+        } else {
+          channelValues[0] = map(xRight, -100, 100, 1000, 2000);;
+          channelValues[1] = map(yRight, -100, 100, 1000, 2000);;
+          channelValues[2] = map(xLeft, -100, 100, 1000, 2000);
+          channelValues[3] = map(yLeft, -100, 100, 1000, 2000);;
+        }
 
-        channelValues[0] = map(xLeft, -100, 100, 1000, 2000);
-        channelValues[1] = map(yLeft, -100, 100, 1000, 2000);;
-        channelValues[2] = map(xRight, -100, 100, 1000, 2000);;
-        channelValues[3] = map(yRight, -100, 100, 1000, 2000);;
+
         channelValues[4] = switchRoverMode;
         channelValues[5] = switchArmMode;
+
         console.log(channelValues);
+
         if (roverConnected) {
           connection.send(channelValues);
         }
