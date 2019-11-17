@@ -47,3 +47,8 @@ In I2Cdevlib-MPU6050 a check for ARDUINO_ARCH_ESP32 in MPU6050_6Axis_MotionApps2
   typedef uint32_t prog_uint32_t;
 #endif
 ```
+
+### Uploading Controller page to Spiffs
+```
+pio run -t uploadfs
+```

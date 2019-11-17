@@ -111,9 +111,9 @@ void setup() {
     handle_controller_disconnected(0);
 
     rc_receiver_rmt_init();
-    init_switch_checker(RC_LOW, RC_ARM_MODE_ROVER_CHANNEL, RC_ROVER_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     
     wifi_controller_init("rover", NULL);
+    init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     register_connection_callback(&handle_wifi_controller_status);
 
     motors_left.attach(ROVER_MOTORS_LEFT_PIN);

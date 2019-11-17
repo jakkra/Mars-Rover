@@ -59,3 +59,5 @@
 
 #define ROVER_MOTORS_LEFT_PIN       12
 #define ROVER_MOTORS_RIGHT_PIN      13
+
+static uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW };

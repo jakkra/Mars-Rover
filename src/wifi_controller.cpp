@@ -31,6 +31,7 @@ static WebSocketsServer websocket_server = WebSocketsServer(WEBSOCKET_PORT);
 
 static WifiControllerStatusCb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
 static uint8_t num_callbacks;
+static bool is_initialized = false;
 
 void wifi_controller_init(const char* ssid, const char* password)
 {
@@ -59,10 +60,12 @@ void wifi_controller_init(const char* ssid, const char* password)
 
   status = xTaskCreate(web_server_handler, "WebServerHandler", 4096, NULL, tskIDLE_PRIORITY, &xHandle);
   assert(status == pdPASS);
+  is_initialized = true;
 }
 
 void register_connection_callback(WifiControllerStatusCb* cb) {
   assert(num_callbacks <= MAX_REGISTRATED_CALLBACKS);
+  assert(is_initialized);
   status_callbacks[num_callbacks] = cb;
   num_callbacks++;
 }
@@ -78,19 +81,25 @@ static void handle_not_found(void)
   server.send(404, "text/plain", "Not found");
 }
 
+static void reset_ch_values() {
+  for (uint8_t i = 0; i < RC_NUM_CHANNELS; i++) {
+    channel_values[i] = config_default_ch_values[i];
+  }
+}
+
 static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   switch (type)
   {
     case WStype_DISCONNECTED:
       printf("Disconnect\n");
-      memset(channel_values, 0, sizeof(channel_values));
+      reset_ch_values();
       for (uint8_t i = 0; i < num_callbacks; i++) {
         status_callbacks[i](WIFI_CONTROLLER_DISCONNECTED);
       }
       break;
     case WStype_CONNECTED:
       printf("Connected\n");
-      memset(channel_values, 0, sizeof(channel_values));
+      reset_ch_values();
       for (uint8_t i = 0; i < num_callbacks; i++) {
         status_callbacks[i](WIFI_CONTROLLER_CONNECTED);
       }
@@ -106,11 +115,12 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
             channel_values[i] = values[i];
           } else {
             ESP_LOGE(TAG, "Expected channel values to be in range 1000 - 2000 but was: %d\n", values[i]);
-            channel_values[i] = 1500;
+            channel_values[i] = config_default_ch_values[i];
           }
         }
       } else {
         ESP_LOGI(TAG, "Invalid binary length");
+        reset_ch_values();
       }
       printf("%d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
       break;
