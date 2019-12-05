@@ -13,7 +13,11 @@ typedef enum RoverServo {
   SERVO_FRONT_RIGHT,
   SERVO_BACK_LEFT,
   SERVO_FRONT_LEFT,
-  SERVO_BACK_RIGHT
+  SERVO_BACK_RIGHT,
+  SERVO_UNUSED,
+  SERVO_HEAD_YAW,
+  SERVO_HEAD_PITCH,
+  SERVO_LAST,
 } RoverServo;
 
 void rover_servo_init();

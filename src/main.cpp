@@ -25,6 +25,7 @@
 #include "arm.h"
 #include "gyro_accel_sensor.h"
 #include "rover_servo.h"
+#include "rover_head.h"
 
 #define DEBUG
 
@@ -128,6 +129,7 @@ void setup() {
     rover_servo_write(SERVO_BACK_RIGHT, RC_CENTER);
 
     arm_init();
+    rover_head_init();
 
     LOGF("Rover Ready! Core: %d", xPortGetCoreID());
 }
@@ -146,6 +148,14 @@ static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
   } else {
     arm_pause(arm_axis);
   }
+}
+
+static void handle_rover_head() {
+  uint16_t yawUs = filter_signal(rc_values[RC_HEAD_YAW_CHANNEL]);
+  uint16_t pitchUs = filter_signal(rc_values[RC_HEAD_PITCH_CHANNEL]);
+
+  rover_head_yaw(yawUs);
+  rover_head_pitch(pitchUs);
 }
 
 static void setMotorInReverseMode(Servo motor) {
@@ -285,6 +295,8 @@ void loop() {
 
       rc_values[RC_STEER_CHANNEL][rc_value_index] = get_controller_channel_value(RC_STEER_CHANNEL);
       rc_values[RC_MOTOR_CHANNEL][rc_value_index] = get_controller_channel_value(RC_MOTOR_CHANNEL);
+      rc_values[RC_HEAD_PITCH_CHANNEL][rc_value_index] = get_controller_channel_value(RC_HEAD_PITCH_CHANNEL);
+      rc_values[RC_HEAD_YAW_CHANNEL][rc_value_index] = get_controller_channel_value(RC_HEAD_YAW_CHANNEL);
 
       if (current_rover_mode == DRIVE_TURN_NORMAL) {
         signal = filter_signal(rc_values[RC_MOTOR_CHANNEL]);
@@ -293,6 +305,7 @@ void loop() {
       }
       handleMoveMotors(signal);
       handle_steer();
+      handle_rover_head();
       break;
     }
     case ROBOT_ARM:
