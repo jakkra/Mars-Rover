@@ -23,6 +23,8 @@ Currently arm is just pretty much mapped to controls on the RC Controller, this 
 - 6 Servos in the arm for 6-DOF. Poweded by a 3S battery. 
 - 2 servos (MG946R) for the head.
 - 6 Channel RC receiver and transmitter
+- 6 Motor shaft adapters https://www.pololu.com/product/1081
+- Some Round Metal Servo Arm 25T Disc Horns.
 - MCU (ESP32)
 - 3S battery
 - Lots of screws and bolts, mostly M3, but some M4's too.
