@@ -20,5 +20,5 @@ typedef enum RoverServo {
   SERVO_LAST,
 } RoverServo;
 
-void rover_servo_init();
+void rover_servo_init(xSemaphoreHandle i2cSemHandle);
 void rover_servo_write(RoverServo axis, uint16_t us, bool full_range = false);

@@ -106,9 +106,12 @@ void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
     Wire.begin(ROVER_SDA_PIN, ROVER_SCL_PIN);
     Wire.setClock(400000);
+    xSemaphoreHandle i2cSemaphoreHandle = xSemaphoreCreateBinary();
+    assert(i2cSemaphoreHandle != NULL);
+    xSemaphoreGive(i2cSemaphoreHandle);
 
-    //gyro_accel_init(true);
-    rover_servo_init();
+    gyro_accel_init(i2cSemaphoreHandle, true);
+    rover_servo_init(i2cSemaphoreHandle);
     handle_controller_disconnected(0);
 
     rc_receiver_rmt_init();

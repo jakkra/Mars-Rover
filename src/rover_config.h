@@ -42,8 +42,8 @@
 
 #define ARM_NUM_AXIS 6
 
-#define ROVER_SCL_PIN               27
-#define ROVER_SDA_PIN               22
+#define ROVER_SCL_PIN               5
+#define ROVER_SDA_PIN               23
 #define ROVER_GYRO_ACCEL_INT_PIN    34
 
 #define SERVOMIN  250 // this is the 'minimum' pulse length count (out of 4096)
@@ -55,4 +55,4 @@
 #define ROVER_MOTORS_LEFT_PIN       17
 #define ROVER_MOTORS_RIGHT_PIN      13
 
-static uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW, RC_CENTER };
+const uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW, RC_CENTER };

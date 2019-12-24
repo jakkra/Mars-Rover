@@ -47,16 +47,6 @@ Videos:
 <img src="/.github/render.jpg" />
 <img src="/.github/wifi_controller.jpg" />
 
-## Building
-In I2Cdevlib-MPU6050 a check for ARDUINO_ARCH_ESP32 in MPU6050_6Axis_MotionApps20.h is necessary for the project to build:
-```
-#ifndef ARDUINO_ARCH_ESP32
-  typedef void prog_void;
-  ...
-  typedef uint32_t prog_uint32_t;
-#endif
-```
-
 ### Uploading Controller page to Spiffs
 ```
 pio run -t uploadfs
