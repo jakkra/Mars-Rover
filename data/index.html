@@ -73,6 +73,7 @@
       <button class="btn" value="Arm" onclick="onModeChange(this.value)">Arm</button>
       <button class="btn" value="Gripper" onclick="onModeChange(this.value)">Gripper</button>
       <button class="btn" value="Head" onclick="onModeChange(this.value)">Head</button>
+      <button class="btn" value="Led" onclick="onModeChange(this.value)">Toggle LED</button>
       <p></p>
       <span id="resultLeft"></span> <span id="resultRight"></span>
     </div> 
@@ -84,6 +85,7 @@
       var switchRoverMode = 1000;
       var switchArmMode = 1500;
       var moveHead = false;
+      var isLedOn = false;
       var connection = new WebSocket('ws://192.168.4.1:81');
 
       console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
@@ -165,7 +167,6 @@
             channelValues[2] = 1500;
             channelValues[3] = 1500;
           } else if (moveHead === true) {
-            console.log('move head');
             channelValues[0] = 1500;
             channelValues[1] = 1500;
             channelValues[2] = map(xRight, -100, 100, 1000, 2000);
@@ -223,6 +224,18 @@
           case 'Gripper':
             switchRoverMode = 2000;
             switchArmMode = 2000;
+            break;
+          case 'Led':
+            var url = 'http://192.168.4.10/control?var=led&val=';
+            isLedOn = !isLedOn;
+            if (isLedOn === true) {
+              url += '1';
+            } else {
+              url += '0';
+            }
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open('GET', url);
+            httpRequest.send();
             break;
           default:
             break;
