@@ -51,16 +51,28 @@
       -webkit-user-select	: none;
       -moz-user-select	: none;
     }
+    #stream {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+      height: 100%;
+    }
     </style>
   </head>
   <body>
-    <div id="container"></div>
+    <div id="container">
+      <div>
+        <img id="stream" src="http://192.168.4.10:81/stream">
+      </div>
+    </div>
     <div id="info">
       <br/>
       <button class="btn" value="Normal" onclick="onModeChange(this.value)">Normal</button>
       <button class="btn" value="Spin" onclick="onModeChange(this.value)">Spin</button>
       <button class="btn" value="Arm" onclick="onModeChange(this.value)">Arm</button>
       <button class="btn" value="Gripper" onclick="onModeChange(this.value)">Gripper</button>
+      <button class="btn" value="Head" onclick="onModeChange(this.value)">Head</button>
       <p></p>
       <span id="resultLeft"></span> <span id="resultRight"></span>
     </div> 
@@ -71,6 +83,7 @@
       var timer = null;
       var switchRoverMode = 1000;
       var switchArmMode = 1500;
+      var moveHead = false;
       var connection = new WebSocket('ws://192.168.4.1:81');
 
       console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
@@ -146,10 +159,18 @@
          // Makes it a bit easier to drive and to avoid accidentally
          // going forward when you want to just steer.
         if (switchRoverMode == 1000) {
-          channelValues[0] = map(xRight, -100, 100, 1000, 2000);;
-          channelValues[1] = map(yLeft, -100, 100, 1000, 2000);
-          channelValues[2] = 1500; //map(xLeft, -100, 100, 1000, 2000);
-          channelValues[3] = 1500; //map(yLeft, -100, 100, 1000, 2000);;
+          if (!moveHead) {
+            channelValues[0] = map(xRight, -100, 100, 1000, 2000);;
+            channelValues[1] = map(yLeft, -100, 100, 1000, 2000);
+            channelValues[2] = 1500;
+            channelValues[3] = 1500;
+          } else if (moveHead === true) {
+            console.log('move head');
+            channelValues[0] = 1500;
+            channelValues[1] = 1500;
+            channelValues[2] = map(xRight, -100, 100, 1000, 2000);
+            channelValues[3] = map(yRight, -100, 100, 1000, 2000);
+          }
         } else {
           channelValues[0] = map(xRight, -100, 100, 1000, 2000);;
           channelValues[1] = map(yRight, -100, 100, 1000, 2000);;
@@ -180,8 +201,14 @@
       timer = setInterval(sendData, 50);
 
       function onModeChange(mode) {
+        moveHead = false;
         switch (mode) {
           case 'Normal':
+            switchRoverMode = 1000;
+            switchArmMode = 1500;
+            break;
+          case 'Head':
+            moveHead = true;
             switchRoverMode = 1000;
             switchArmMode = 1500;
             break;
