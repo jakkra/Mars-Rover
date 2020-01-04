@@ -110,7 +110,7 @@ void setup() {
     assert(i2cSemaphoreHandle != NULL);
     xSemaphoreGive(i2cSemaphoreHandle);
 
-    gyro_accel_init(i2cSemaphoreHandle, true);
+    //gyro_accel_init(i2cSemaphoreHandle, true);
     rover_servo_init(i2cSemaphoreHandle);
     handle_controller_disconnected(0);
 

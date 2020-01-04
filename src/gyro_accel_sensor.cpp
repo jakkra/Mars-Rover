@@ -10,7 +10,7 @@
 
 MPU6050 mpu6050(Wire);
 
-#define DEBUG_ACCEL
+//#define DEBUG_ACCEL
 
 static void readMpuData(void* params);
 
