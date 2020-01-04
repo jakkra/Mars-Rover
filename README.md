@@ -39,7 +39,10 @@ Videos:
 <img src="/.github/1.jpg "/>
 <img src="/.github/2.jpg "/>
 <img src="/.github/full.jpg "/>
+<p float="left">
 <img src="/.github/arm.jpg" width="420" />
+<img src="/.github/back.jpg" width="420" />
+</p>
 <img src="/.github/4.jpg "/>
 <img src="/.github/parts.jpg "/>
 <img src="/.github/cad.png" />
