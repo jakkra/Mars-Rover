@@ -122,7 +122,7 @@ static void handle_websocket_event(uint8_t num, WStype_t type, uint8_t * payload
         ESP_LOGI(TAG, "Invalid binary length");
         reset_ch_values();
       }
-      printf("%d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
+      //printf("%d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
       break;
   default:
     break;

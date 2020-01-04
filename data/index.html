@@ -63,7 +63,7 @@
   <body>
     <div id="container">
       <div>
-        <img id="stream" src="http://192.168.4.10:81/stream">
+        <img id="stream">
       </div>
     </div>
     <div id="info">
@@ -73,6 +73,7 @@
       <button class="btn" value="Arm" onclick="onModeChange(this.value)">Arm</button>
       <button class="btn" value="Gripper" onclick="onModeChange(this.value)">Gripper</button>
       <button class="btn" value="Head" onclick="onModeChange(this.value)">Head</button>
+      <button class="btn" value="Camera" onclick="onModeChange(this.value)">Toggle Camera</button>
       <button class="btn" value="Led" onclick="onModeChange(this.value)">Toggle LED</button>
       <p></p>
       <span id="resultLeft"></span> <span id="resultRight"></span>
@@ -86,34 +87,48 @@
       var switchArmMode = 1500;
       var moveHead = false;
       var isLedOn = false;
-      var connection = new WebSocket('ws://192.168.4.1:81');
+      var cameraOn = false;
+      var connection;
+      var reconnectTimerId = 0;
 
       console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
-      
-      connection.onopen = function () {
-        console.log("Websocket Open");
-        roverConnected = true;
-      };
 
-      connection.onerror = function (error) {
-        console.log('WebSocket Error ' + error);
-        if (roverConnected) {
-          clearInterval(timer);
-        }
-        roverConnected = false;
-      };
+      function connect() {
+        connection = new WebSocket('ws://192.168.4.1:81');
 
-      connection.onmessage = function (e) {
-         console.log("indata: " + e.data);
-      };
+        connection.onopen = function () {
+          console.log("Websocket Open");
+          roverConnected = true;
+          reconnectTimerId = 0;
+          timer = setInterval(sendData, 50);
+        };
   
-      connection.onclose = function (e) {
-          console.log("Websocket close");
+        connection.onerror = function (error) {
+          console.log('WebSocket Error ' + error);
           if (roverConnected) {
             clearInterval(timer);
           }
           roverConnected = false;
-      };
+        };
+
+        connection.onmessage = function (e) {
+           console.log("indata: " + e.data);
+        };
+
+        connection.onclose = function (e) {
+            console.log("Websocket close");
+            if (roverConnected) {
+              clearInterval(timer);
+            }
+            roverConnected = false;
+            if (!reconnectTimerId) {
+              reconnectTimerId = setTimeout(function() {
+                connect();
+              }, 100);
+            }
+        };
+      }
+      connect();
 
       var joystickRight	= new VirtualJoystick({
         container	: document.getElementById('container'),
@@ -183,7 +198,7 @@
         channelValues[4] = switchRoverMode;
         channelValues[5] = switchArmMode;
 
-        console.log(channelValues);
+        //console.log(channelValues);
 
         if (roverConnected) {
           connection.send(channelValues);
@@ -199,14 +214,12 @@
           + ' dy:' + yRight
       };
 
-      timer = setInterval(sendData, 50);
-
       function onModeChange(mode) {
-        moveHead = false;
         switch (mode) {
           case 'Normal':
             switchRoverMode = 1000;
             switchArmMode = 1500;
+            moveHead = false;
             break;
           case 'Head':
             moveHead = true;
@@ -216,14 +229,17 @@
           case 'Spin':
             switchRoverMode = 1500;
             switchArmMode = 1500;
+            moveHead = false;
             break;
           case 'Arm':
             switchRoverMode = 2000;
             switchArmMode = 1000;
+            moveHead = false;
             break;
           case 'Gripper':
             switchRoverMode = 2000;
             switchArmMode = 2000;
+            moveHead = false;
             break;
           case 'Led':
             var url = 'http://192.168.4.10/control?var=led&val=';
@@ -236,6 +252,15 @@
             var httpRequest = new XMLHttpRequest();
             httpRequest.open('GET', url);
             httpRequest.send();
+            break;
+          case 'Camera':
+            const blankSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+            cameraOn = !cameraOn;
+            if (cameraOn == true) {
+              document.getElementById("stream").src = 'http://192.168.4.10:81/stream';
+            } else {
+              document.getElementById("stream").src = blankSrc;
+            }
             break;
           default:
             break;
