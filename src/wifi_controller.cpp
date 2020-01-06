@@ -57,17 +57,21 @@ void wifi_controller_init(const char* ssid, const char* password)
   server.begin();
   websocket_server.onEvent(handle_websocket_event);
   websocket_server.begin();
-
   status = xTaskCreate(web_server_handler, "WebServerHandler", 4096, NULL, tskIDLE_PRIORITY, &xHandle);
   assert(status == pdPASS);
   is_initialized = true;
 }
 
-void register_connection_callback(WifiControllerStatusCb* cb) {
+void wifi_controller_register_connection_callback(WifiControllerStatusCb* cb) {
   assert(num_callbacks <= MAX_REGISTRATED_CALLBACKS);
   assert(is_initialized);
   status_callbacks[num_callbacks] = cb;
   num_callbacks++;
+}
+
+bool wifi_controller_ws_send_bin(uint8_t* data, uint32_t length)
+{
+    return websocket_server.broadcastBIN(data, length);
 }
 
 uint16_t wifi_controller_get_val(uint8_t channel)

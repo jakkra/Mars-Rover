@@ -4,19 +4,19 @@
 #include "esp_log.h"
 #include "gyro_accel_sensor.h"
 #include "rover_config.h"
+#include "wifi_controller.h"
 
 #include <Wire.h>
 #include <MPU6050_tockn.h>
-
-MPU6050 mpu6050(Wire);
 
 //#define DEBUG_ACCEL
 
 static void readMpuData(void* params);
 
+static MPU6050 mpu6050(Wire);
 static xSemaphoreHandle update_accel_sem;
-static GyroAccelData current_val;
 static xSemaphoreHandle i2cSemaphoreHandle;
+static GyroAccelData current_val;
 
 void gyro_accel_init(xSemaphoreHandle i2cSemHandle, bool calibrate) {
   BaseType_t status_bs;
@@ -53,7 +53,6 @@ static void readMpuData(void* params)
     assert(pdTRUE == xSemaphoreTake(i2cSemaphoreHandle, pdMS_TO_TICKS(100)));
     mpu6050.update();
     xSemaphoreGive(i2cSemaphoreHandle);
-    vTaskDelay(pdMS_TO_TICKS(100));
     xSemaphoreTake(update_accel_sem, portMAX_DELAY);
     current_val.temp = mpu6050.getTemp();
     current_val.accX = mpu6050.getAccX();
@@ -68,11 +67,13 @@ static void readMpuData(void* params)
     current_val.angleX = mpu6050.getAngleX();
     current_val.angleY = mpu6050.getAngleY();
     current_val.angleZ = mpu6050.getAngleZ();
+    wifi_controller_ws_send_bin((uint8_t*)&current_val, sizeof(current_val));
     xSemaphoreGive(update_accel_sem);
 #ifdef DEBUG_ACCEL
     Serial.print("angleX : ");Serial.print(current_val.angleX);
     Serial.print("\tangleY : ");Serial.print(current_val.angleY);
     Serial.print("\tangleZ : ");Serial.println(current_val.angleZ);
 #endif
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }

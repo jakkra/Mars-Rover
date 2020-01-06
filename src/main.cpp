@@ -110,7 +110,7 @@ void setup() {
     assert(i2cSemaphoreHandle != NULL);
     xSemaphoreGive(i2cSemaphoreHandle);
 
-    //gyro_accel_init(i2cSemaphoreHandle, true);
+    gyro_accel_init(i2cSemaphoreHandle, true);
     rover_servo_init(i2cSemaphoreHandle);
     handle_controller_disconnected(0);
 
@@ -118,7 +118,7 @@ void setup() {
     
     wifi_controller_init("rover", NULL);
     init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
-    register_connection_callback(&handle_wifi_controller_status);
+    wifi_controller_register_connection_callback(&handle_wifi_controller_status);
 
     motors_left.attach(ROVER_MOTORS_LEFT_PIN);
     motors_left.writeMicroseconds(RC_CENTER);

@@ -112,7 +112,27 @@
         };
 
         connection.onmessage = function (e) {
-           console.log("indata: " + e.data);
+          console.log('WS Bin length', e.data.size);
+          if (e.data.size !== (13 * 4)) return; // We expect 13 float values.
+           var buffer = e.data.arrayBuffer().then((buffer) => {
+             var values = new Float32Array(buffer);
+             var data = {
+              temp: values[0],
+              accX: values[1],
+              accY: values[2],
+              accZ: values[3],
+              gyroX: values[4],
+              gyroY: values[5],
+              gyroZ: values[6],
+              gyroAngleX: values[7],
+              gyroAngleY: values[8],
+              gyroAngleZ: values[9],
+              angleX: values[10],
+              angleY: values[11],
+              angleZ: values[12],
+             };
+             // TODO Do something with the data
+           });
         };
 
         connection.onclose = function (e) {
