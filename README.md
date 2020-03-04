@@ -1,6 +1,9 @@
 # Rover
 ## CAD model
-The whole Fusion 360 project can be found in the CAD folder, download the .f3z file and open it in desktop Fusion 360. There is also a STEP file in the same folder, however I did not export a .step file fo each part.
+The whole Fusion 360 project can be found in the CAD folder, download the .f3z file and open it in desktop Fusion 360. 
+
+### Wheels
+There are two options for wheeles, either original Curiosity style wheels that print in one piece. Or Mars 2020 style wheels that print in two parts where outer part can be printed in flexibale plastic such as TPU. The rover_2020_wheel_flex.f3d wheels are preferred if your printer can print in TPU as they provide way more grip.
 
 ## Driving modes
 There are two ways to drive the rover. Either using a RC controller or from a website hosted on the ESP32.
@@ -36,21 +39,30 @@ Currently arm is just pretty much mapped to controls on the RC Controller, this 
 Videos:
 - Showing the boogie mechanism in action [https://imgur.com/4UIsRLl](https://imgur.com/4UIsRLl) 
 - Arm [https://imgur.com/KY5ioLb](https://imgur.com/KY5ioLb)
-<img src="/.github/1.jpg "/>
 <img src="/.github/2.jpg "/>
 <img src="/.github/full.jpg "/>
+<img src="/.github/boogie_full.jpg "/>
+<img src="/.github/1.jpg "/>
+<img src="/.github/4.jpg "/>
+<img src="/.github/parts.jpg "/>
 <p float="left">
 <img src="/.github/arm.jpg" width="420" />
 <img src="/.github/back.jpg" width="420" />
 </p>
-<img src="/.github/4.jpg "/>
-<img src="/.github/parts.jpg "/>
+<img src="/.github/full1.jpg "/>
 <img src="/.github/cad.png" />
-<img src="/.github/cad_capture.png" />
-<img src="/.github/render.jpg" />
+<p float="left">
+<img src="/.github/cad_capture.png" width="420" />
+<img src="/.github/render.jpg" width="420" />
+</p>
 <img src="/.github/wifi_controller.jpg" />
 
 ### Uploading Controller page to Spiffs
 ```
 pio run -t uploadfs
+```
+
+### Misc
+```
+xtensa-esp32-elf/bin/xtensa-esp32-elf-addr2line.exe -pfiaC -e /c/Users/ijakk_000/Documents/Rover-code/.pio/build/esp-wrover-kit/firmware.elf 0x00000000:0x3ffb5c60 ...
 ```
