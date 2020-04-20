@@ -5,6 +5,7 @@
     },
     "git.ignoreLimitWarning": true,
     "files.associations": {
-        "switch_checker.h": "c"
+        "switch_checker.h": "c",
+        "functional": "cpp"
     }
 }

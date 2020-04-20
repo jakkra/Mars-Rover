@@ -13,6 +13,6 @@ typedef void(WifiControllerStatusCb(WifiControllerStatus status));
 
 void wifi_controller_init(const char* ssid, const char* password);
 void wifi_controller_register_connection_callback(WifiControllerStatusCb* cb);
-bool wifi_controller_ws_send_bin(uint8_t* data, uint32_t length);
+void wifi_controller_ws_send_bin(uint8_t* data, uint32_t length);
 void wifi_controller_deinit(void);
 uint16_t wifi_controller_get_val(uint8_t channel);

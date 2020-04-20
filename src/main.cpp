@@ -14,7 +14,7 @@
 *   -HIGH: Arm mode, the two joysticks are used for moving axis 1-4 on the arm. Switch2 is used to switch beween moving
 *          axis 1-4 and axis 5-6 (the gripper). This will be changed in the future, steering each axis manually is not really a good way, inverse kinematics is TODO.
 */
-
+#define DEBUG_WEBSOCKETS 1
 #include <Arduino.h>
 #include "rover_config.h"
 #include <ESP32Servo.h>
@@ -116,7 +116,7 @@ void setup() {
 
     rc_receiver_rmt_init();
     
-    wifi_controller_init("rover", NULL);
+    wifi_controller_init("RoverController", NULL);
     init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     wifi_controller_register_connection_callback(&handle_wifi_controller_status);
 
