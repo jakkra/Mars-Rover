@@ -6,6 +6,13 @@
     "git.ignoreLimitWarning": true,
     "files.associations": {
         "switch_checker.h": "c",
-        "functional": "cpp"
+        "functional": "cpp",
+        "regex": "cpp",
+        "*.tcc": "cpp",
+        "system_error": "cpp",
+        "array": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
     }
 }

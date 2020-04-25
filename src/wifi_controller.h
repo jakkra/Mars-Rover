@@ -6,7 +6,6 @@ typedef enum WifiControllerStatus
 {
   WIFI_CONTROLLER_CONNECTED,
   WIFI_CONTROLLER_DISCONNECTED,
-  WIFI_CONTROLLER_ERROR,
 } WifiControllerStatus;
 
 typedef void(WifiControllerStatusCb(WifiControllerStatus status));

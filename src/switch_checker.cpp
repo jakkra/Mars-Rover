@@ -1,12 +1,22 @@
 #include "switch_checker.h"
 #include "rc_receiver_rmt.h"
 #include "wifi_controller.h"
+#include "lora_controller.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "rover_config.h"
 
+typedef enum ControllerSource {
+  SOURCE_RC,
+  SOURCE_WIFI,
+  SOURCE_LORA
+} ControllerSource;
+
 static void check_switch_channels(void* params);
 static void handle_wifi_controller_status(WifiControllerStatus status);
+static void handle_lora_controller_status(LoraControllerStatus status);
+static void update_controller_source(void);
+static uint16_t get_channel_value(uint16_t channel);
 
 static uint32_t interval;
 static RoverModeChanged* mode_changed_callback;
@@ -14,7 +24,9 @@ static ArmModeChanged* arm_mode_callback;
 static uint16_t rover_mode_channel;
 static uint16_t arm_mode_channel;
 
-static bool controller_source_wifi = false;
+static ControllerSource controller_source = SOURCE_RC;
+static WifiControllerStatus wifi_state = WIFI_CONTROLLER_DISCONNECTED;
+static LoraControllerStatus lora_state = LORA_CONTROLLER_DISCONNECTED;
 
 void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_channel, uint16_t arm_mode_switch_channel, RoverModeChanged* callback, ArmModeChanged* arm_callback) {
   BaseType_t status;
@@ -27,6 +39,7 @@ void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_
   arm_mode_channel = arm_mode_switch_channel;
 
   wifi_controller_register_connection_callback(&handle_wifi_controller_status);
+  lora_controller_register_connection_callback(&handle_lora_controller_status);
 
   status = xTaskCreate(check_switch_channels, "SwitchChecker", 2048, NULL, tskIDLE_PRIORITY, &xHandle);
   assert(status == pdPASS);
@@ -34,10 +47,24 @@ void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_
 
 static void handle_wifi_controller_status(WifiControllerStatus status)
 {
-  if (status == WIFI_CONTROLLER_CONNECTED) {
-    controller_source_wifi = true;
+  wifi_state = status;
+  update_controller_source();
+}
+
+static void handle_lora_controller_status(LoraControllerStatus status)
+{
+  lora_state = status;
+  update_controller_source();
+}
+
+static void update_controller_source(void)
+{
+  if (lora_state == LORA_CONTROLLER_CONNECTED) {
+    controller_source = SOURCE_LORA;
+  } else if (wifi_state == WIFI_CONTROLLER_CONNECTED) {
+    controller_source = SOURCE_WIFI;
   } else {
-    controller_source_wifi = false;
+    controller_source = SOURCE_RC;
   }
 }
 
@@ -50,11 +77,8 @@ static void check_switch_channels(void* params)
   ArmMode new_arm_mode = current_arm_mode;
 
   while (true) {
-    if (controller_source_wifi) {
-      signal = wifi_controller_get_val(rover_mode_channel);
-    } else {
-      signal = rc_receiver_rmt_get_val(rover_mode_channel);
-    }
+    
+    signal = get_channel_value(rover_mode_channel);
     
     if (signal < RC_CENTER - 100) {
       new_rover_mode = DRIVE_TURN_NORMAL;
@@ -64,11 +88,7 @@ static void check_switch_channels(void* params)
       new_rover_mode = DRIVE_TURN_SPIN;
     }
     
-    if (controller_source_wifi) {
-      signal = wifi_controller_get_val(arm_mode_channel);
-    } else {
-      signal = rc_receiver_rmt_get_val(arm_mode_channel);
-    }
+    signal = get_channel_value(arm_mode_channel);
 
     if (signal < RC_CENTER - 100) {
       new_arm_mode = ARM_MODE_MOVE;
@@ -87,4 +107,24 @@ static void check_switch_channels(void* params)
     }
     vTaskDelay(interval * (1000 / configTICK_RATE_HZ)); 
   }
+}
+
+static uint16_t get_channel_value(uint16_t channel)
+{
+  uint16_t value;
+  switch (controller_source) {
+    case SOURCE_RC:
+      value = rc_receiver_rmt_get_val(channel);
+      break;
+    case SOURCE_WIFI:
+      value = wifi_controller_get_val(channel);
+      break;
+    case SOURCE_LORA:
+      value = lora_controller_get_val(channel);
+      break;
+    default:
+      assert(false);
+      break;
+  }
+  return value;
 }

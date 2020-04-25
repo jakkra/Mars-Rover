@@ -14,18 +14,22 @@
 *   -HIGH: Arm mode, the two joysticks are used for moving axis 1-4 on the arm. Switch2 is used to switch beween moving
 *          axis 1-4 and axis 5-6 (the gripper). This will be changed in the future, steering each axis manually is not really a good way, inverse kinematics is TODO.
 */
-#define DEBUG_WEBSOCKETS 1
+
 #include <Arduino.h>
 #include "rover_config.h"
 #include <ESP32Servo.h>
 #include "Wire.h"
 #include "rc_receiver_rmt.h"
 #include "wifi_controller.h"
+#include "lora_controller.h"
 #include "switch_checker.h"
 #include "arm.h"
 #include "gyro_accel_sensor.h"
 #include "rover_servo.h"
 #include "rover_head.h"
+
+#include <SPI.h>
+#include <LoRa.h>
 
 #define DEBUG
 
@@ -40,6 +44,7 @@
 #endif
 
 static void handle_wifi_controller_status(WifiControllerStatus status);
+static void handle_lora_controller_status(LoraControllerStatus status);
 
 enum MotorDirection {
   MOTOR_IDLE,
@@ -55,17 +60,10 @@ static RoverMode current_rover_mode = DRIVE_TURN_NORMAL;
 static ArmMode current_arm_mode = ARM_MODE_MOVE;
 
 static bool wifi_control_enabled = false;
+static bool lora_control_enabled = false;
 
 static Servo motors_left;
 static Servo motors_right;
-
-static Servo front_left;
-static Servo front_right;
-static Servo back_left;
-static Servo back_right;
-
-static WifiControllerStatus current_wifi_status = WIFI_CONTROLLER_ERROR;
-
 
 static uint16_t filter_signal(uint16_t* signals) {
   uint32_t signal = 0;
@@ -117,8 +115,10 @@ void setup() {
     rc_receiver_rmt_init();
     
     wifi_controller_init("RoverController", NULL);
+    lora_controller_init();
     init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
     wifi_controller_register_connection_callback(&handle_wifi_controller_status);
+    lora_controller_register_connection_callback(&handle_lora_controller_status);
 
     motors_left.attach(ROVER_MOTORS_LEFT_PIN);
     motors_left.writeMicroseconds(RC_CENTER);
@@ -135,6 +135,8 @@ void setup() {
     rover_head_init();
 
     LOGF("Rover Ready! Core: %d", xPortGetCoreID());
+
+
 }
 
 static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
@@ -169,7 +171,6 @@ static void setMotorInReverseMode(Servo motor) {
 }
 
 static void handleMoveMotors(uint16_t signal) {
-  //LOGLN(signal);
   switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
         if (signal < RC_CENTER && signal > 0) { // MOTOR_Backward        
@@ -263,7 +264,6 @@ static void handle_steer(void) {
 static void handle_wifi_controller_status(WifiControllerStatus status)
 {
   LOGF("Wifi Controller status: %d\n", status);
-  current_wifi_status = status;
   if (status != WIFI_CONTROLLER_CONNECTED) {
     handle_controller_disconnected(0);
     wifi_control_enabled = false;
@@ -272,11 +272,24 @@ static void handle_wifi_controller_status(WifiControllerStatus status)
   }
 }
 
+static void handle_lora_controller_status(LoraControllerStatus status)
+{
+  LOGF("Lora Controller status: %d\n", status);
+  if (status != LORA_CONTROLLER_CONNECTED) {
+    handle_controller_disconnected(0);
+    lora_control_enabled = false;
+  } else {
+    lora_control_enabled = true;
+  }
+}
+
 static uint16_t get_controller_channel_value(uint8_t channel)
 {
   uint16_t channel_value = 0;
 
-  if (wifi_control_enabled) {
+  if (lora_control_enabled) {
+    channel_value = lora_controller_get_val(channel);
+  } else if (wifi_control_enabled) {
     channel_value = wifi_controller_get_val(channel);
   } else {
     channel_value = rc_receiver_rmt_get_val(channel);

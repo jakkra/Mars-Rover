@@ -9,7 +9,7 @@
 
 #define MAX_REGISTRATED_CALLBACKS 2
 
-const char* TAG = "wifi_controller";
+static const char* TAG = "wifi_controller";
 
 static void handle_not_found(AsyncWebServerRequest *request);
 static void handle_websocket_event(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length);
