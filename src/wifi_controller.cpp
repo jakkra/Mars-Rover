@@ -16,9 +16,6 @@ static void handle_websocket_event(AsyncWebSocket * server, AsyncWebSocketClient
 static void list_dir(const char* dirname, uint8_t levels);
 static void wifiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
 
-AsyncEventSource events("/events"); // event source (Server-Sent events)
-
-
 static uint16_t channel_values[RC_NUM_CHANNELS] = {0};
 
 static const char* wifi_ssid;
@@ -30,7 +27,6 @@ static IPAddress subnet(255,255,255,0);
 
 static AsyncWebServer server(80                                                                                                                                                             );
 static AsyncWebSocket ws("/ws");
-//static WebSocketsServer websocket_server = WebSocketsServer(WEBSOCKET_PORT);
 
 static WifiControllerStatusCb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
 static uint8_t num_callbacks;
@@ -54,11 +50,9 @@ void wifi_controller_init(const char* ssid, const char* password)
   WiFi.setAutoReconnect(true);
   WiFi.onEvent(wifiEvent);
 
-
   ws.onEvent(handle_websocket_event);
   server.addHandler(&ws);
 
-  server.addHandler(&events);
   server.serveStatic("/", SPIFFS, "/index.html", "");
   server.serveStatic("/virtualjoystick.js", SPIFFS, "/virtualjoystick.js", "");
   server.onNotFound(handle_not_found);
@@ -127,7 +121,6 @@ static void handle_websocket_event(AsyncWebSocket * server, AsyncWebSocketClient
     case WS_EVT_DATA:
     {
       AwsFrameInfo * info = (AwsFrameInfo*)arg;
-      printf("Final: %d, Index: %lld, len: %lld\n", info->final, info->index, info->len);
       if (!(info->final && info->index == 0 && info->len == length)) {
         break;
       }

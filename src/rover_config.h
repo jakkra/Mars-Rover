@@ -19,10 +19,10 @@
 // Input pins connected to each channel on RC Receiver
 #define RC_CH1_INPUT  34
 #define RC_CH2_INPUT  35
-#define RC_CH3_INPUT  32
-#define RC_CH4_INPUT  33
+#define RC_CH3_INPUT  4
+#define RC_CH4_INPUT  39
 #define RC_CH5_INPUT  25
-#define RC_CH6_INPUT  26
+#define RC_CH6_INPUT  36
 
 #define RC_STEER_CHANNEL      RC_CH1
 #define RC_MOTOR_CHANNEL      RC_CH2
@@ -46,8 +46,8 @@
 #define ROVER_SCL_PIN               5
 #define ROVER_SDA_PIN               23
 #else
-#define ROVER_SCL_PIN               27
-#define ROVER_SDA_PIN               22
+#define ROVER_SCL_PIN               22
+#define ROVER_SDA_PIN               21
 #endif
 
 #define SERVOMIN  250 // this is the 'minimum' pulse length count (out of 4096)
