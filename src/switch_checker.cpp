@@ -28,7 +28,7 @@ static ControllerSource controller_source = SOURCE_RC;
 static WifiControllerStatus wifi_state = WIFI_CONTROLLER_DISCONNECTED;
 static LoraControllerStatus lora_state = LORA_CONTROLLER_DISCONNECTED;
 
-void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_channel, uint16_t arm_mode_switch_channel, RoverModeChanged* callback, ArmModeChanged* arm_callback) {
+void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_channel, uint16_t arm_mode_switch_channel, RoverModeChanged* callback, ArmModeChanged* arm_callback, bool wifi_enabled) {
   BaseType_t status;
   TaskHandle_t xHandle = NULL;
   
@@ -38,7 +38,9 @@ void init_switch_checker(uint32_t check_interval_ms, uint16_t rover_mode_switch_
   rover_mode_channel = rover_mode_switch_channel;
   arm_mode_channel = arm_mode_switch_channel;
 
-  wifi_controller_register_connection_callback(&handle_wifi_controller_status);
+  if (wifi_enabled) {
+    wifi_controller_register_connection_callback(&handle_wifi_controller_status);
+  }
   lora_controller_register_connection_callback(&handle_lora_controller_status);
 
   status = xTaskCreate(check_switch_channels, "SwitchChecker", 2048, NULL, tskIDLE_PRIORITY, &xHandle);

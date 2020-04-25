@@ -6,6 +6,7 @@
 #include "WebServer.h"
 #include "ESPAsyncWebServer.h"
 #include "esp_log.h"
+#include "assert.h"
 
 #define MAX_REGISTRATED_CALLBACKS 2
 
@@ -32,7 +33,7 @@ static WifiControllerStatusCb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
 static uint8_t num_callbacks;
 static bool is_initialized = false;
 
-void wifi_controller_init(const char* ssid, const char* password)
+void wifi_controller_init(const char* ssid, const char* password, WifiControllerMode mode)
 {
   memset(channel_values, 0, sizeof(channel_values));
   num_callbacks = 0;
@@ -45,10 +46,22 @@ void wifi_controller_init(const char* ssid, const char* password)
   wifi_ssid = ssid;
   password = password;
 
-  WiFi.begin(wifi_ssid, wifi_password);
-  WiFi.config(local_ip, gateway, subnet);
-  WiFi.setAutoReconnect(true);
-  WiFi.onEvent(wifiEvent);
+  switch (mode)
+  {
+  case WIFI_CONTROLLER_STATION:
+    WiFi.begin(wifi_ssid, wifi_password);
+    WiFi.config(local_ip, gateway, subnet);
+    WiFi.setAutoReconnect(true);
+    WiFi.onEvent(wifiEvent);
+    break;
+  case WIFI_CONTROLLER_AP:
+    WiFi.softAP(wifi_ssid, wifi_password);
+    WiFi.softAPConfig(local_ip, gateway, subnet);
+    break;
+  default:
+    assert(false);
+    break;
+  }
 
   ws.onEvent(handle_websocket_event);
   server.addHandler(&ws);
@@ -81,7 +94,7 @@ uint16_t wifi_controller_get_val(uint8_t channel)
 
 static void handle_not_found(AsyncWebServerRequest *request)
 {
-  request->send(404, "text/plain", "Not found");
+  request->send(SPIFFS, "/index.html");
 }
 
 static void reset_ch_values() {

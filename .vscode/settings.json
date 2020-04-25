@@ -13,6 +13,7 @@
         "array": "cpp",
         "tuple": "cpp",
         "type_traits": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "rover_settings_switch.h": "c"
     }
 }

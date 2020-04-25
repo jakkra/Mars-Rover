@@ -17,5 +17,8 @@ typedef struct GyroAccelData
   float angleZ;
 } GyroAccelData;
 
-void gyro_accel_init(xSemaphoreHandle i2cSemHandle, bool calibrate);
+typedef void(OnData(GyroAccelData* data));
+
+
+void gyro_accel_init(xSemaphoreHandle i2c_sem_handle, bool calibrate, OnData callback, uint32_t period_ms);
 GyroAccelData gyro_accel_get_current();

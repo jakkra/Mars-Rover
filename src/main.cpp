@@ -27,11 +27,14 @@
 #include "gyro_accel_sensor.h"
 #include "rover_servo.h"
 #include "rover_head.h"
+#include "rover_settings_switch.h"
 
 #include <SPI.h>
 #include <LoRa.h>
 
 #define DEBUG
+
+#define ACCEL_READ_PERIOD_MS 100
 
 #ifdef DEBUG
 #define LOG Serial.print
@@ -52,6 +55,8 @@ enum MotorDirection {
   MOTOR_BACKWARD
 };
 
+static const char* TAG = "ROVER_MAIN";
+
 static uint16_t rc_values[RC_NUM_CHANNELS][RC_FILTER_SAMPLES];
 static uint8_t rc_value_index = 0;
 
@@ -64,6 +69,9 @@ static bool lora_control_enabled = false;
 
 static Servo motors_left;
 static Servo motors_right;
+
+static RoverSwitchState startup_settings;
+static bool wifi_enabled = false;
 
 static uint16_t filter_signal(uint16_t* signals) {
   uint32_t signal = 0;
@@ -100,6 +108,13 @@ static void handle_controller_disconnected(uint16_t last_sampled_signal) {
   }
 }
 
+static void on_accel_data(GyroAccelData* data)
+{
+  if (wifi_enabled) {
+    wifi_controller_ws_send_bin((uint8_t*)data, sizeof(GyroAccelData));
+  }
+}
+
 void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
     Wire.begin(ROVER_SDA_PIN, ROVER_SCL_PIN);
@@ -108,17 +123,34 @@ void setup() {
     assert(i2cSemaphoreHandle != NULL);
     xSemaphoreGive(i2cSemaphoreHandle);
 
-    gyro_accel_init(i2cSemaphoreHandle, true);
+    rover_settings_switch_init();
+    gyro_accel_init(i2cSemaphoreHandle, true, on_accel_data, ACCEL_READ_PERIOD_MS);
     rover_servo_init(i2cSemaphoreHandle);
     handle_controller_disconnected(0);
 
     rc_receiver_rmt_init();
-    
-    wifi_controller_init("RoverController", NULL);
+
     lora_controller_init();
-    init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed);
-    wifi_controller_register_connection_callback(&handle_wifi_controller_status);
     lora_controller_register_connection_callback(&handle_lora_controller_status);
+
+    startup_settings = rover_settings_switch_get_state();
+    if (startup_settings == ROVER_SWITCH_STATE_STATION_LORA) {
+      ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_STATION_LORA\n");
+      wifi_controller_init("RoverController", NULL, WIFI_CONTROLLER_STATION);
+      wifi_enabled = true;
+    } else if (startup_settings == ROVER_SWITCH_STATE_AP) {
+      ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_AP\n");
+      wifi_controller_init("Rover", NULL, WIFI_CONTROLLER_AP);
+      wifi_enabled = true;
+    } else {
+      wifi_enabled = false;
+      ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_STATION_LORA\n");
+    }
+
+    if (wifi_enabled) {
+      wifi_controller_register_connection_callback(&handle_wifi_controller_status);
+    }
+    init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed, wifi_enabled);
 
     motors_left.attach(ROVER_MOTORS_LEFT_PIN);
     motors_left.writeMicroseconds(RC_CENTER);
@@ -135,8 +167,6 @@ void setup() {
     rover_head_init();
 
     LOGF("Rover Ready! Core: %d", xPortGetCoreID());
-
-
 }
 
 static void handle_robot_arm_servo(ArmAxis arm_axis, uint16_t channel) {
@@ -303,6 +333,11 @@ static uint16_t get_controller_channel_value(uint8_t channel)
 }
 
 void loop() {
+
+  if (rover_settings_switch_get_state() != startup_settings) {
+    esp_restart(); // Might do graceful WiFi restart and reconfigure later, but for now this will do.
+  }
+
   switch (current_rover_mode) {
     case DRIVE_TURN_NORMAL:
     case DRIVE_TURN_SPIN:
@@ -345,5 +380,6 @@ void loop() {
       break;
   }
   rc_value_index = (rc_value_index + 1) % RC_FILTER_SAMPLES;
+
   vTaskDelay(pdMS_TO_TICKS(20));
 }

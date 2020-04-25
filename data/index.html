@@ -94,7 +94,7 @@
       console.log("touchscreen is", VirtualJoystick.touchScreenAvailable() ? "available" : "not available");
 
       function connect() {
-        connection = new WebSocket('ws://192.168.4.1:81');
+        connection = new WebSocket('ws://192.168.4.5:80/ws');
 
         connection.onopen = function () {
           console.log("Websocket Open");
