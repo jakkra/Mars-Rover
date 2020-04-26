@@ -22,9 +22,9 @@ Currently arm is just pretty much mapped to controls on the RC Controller, this 
 - Uses one DC motor in each wheel
 - 2 brushless ESC's one for each side (3 motors)
 - Lots of (12, one for each servo) 12V to 5V switching voltage regulators
-- 4 servos (MG996R) on each corner wheel to steer.
+- 4 servos (MG946R/MG996R) on each corner wheel to steer.
 - 6 Servos (MG946R) in the arm for 6-DOF. Poweded by a 3S battery. 
-- 2 servos (MG996R) for the head.
+- 2 servos (MG946R/MG996R) for the head.
 - 6 Channel RC receiver and transmitter
 - 6 Motor shaft adapters https://www.pololu.com/product/1081
 - Some Round Metal Servo Arm 25T Disc Horns.
