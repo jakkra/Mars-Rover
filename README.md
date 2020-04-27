@@ -30,10 +30,14 @@ Currently arm is just pretty much mapped to controls on the RC Controller, this 
 - Some Round Metal Servo Arm 25T Disc Horns.
 - MCU (ESP32)
 - 3S battery
+- Standard PVC pipe with inner diameter of 23.40 mm and outer diameter 25 mm.
 - Lots of screws and bolts, mostly M3, but some M4's too.
 - Two kinds of bearings: 5x 608ZZ and 5x 25mm SKF 6005
 - Check the Fusion360 project for more details.
 - Cable madness is TODO to fix (temporary fixed by hiding it under the "lid")
+
+## Building
+There is no manual, but downloading the CAD model and browsing through it should get you started. Browse through both open and closed issues for help. Feel free to open an issue if you have a question. 
 
 ## Images
 Videos:
