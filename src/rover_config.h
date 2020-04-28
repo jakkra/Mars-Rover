@@ -62,4 +62,9 @@
 #define ROVER_SETTINGS_SWITCH_1     2
 #define ROVER_SETTINGS_SWITCH_2     23
 
+#define SERVO_FRONT_LEFT_OFFSET     (+20)
+#define SERVO_FRONT_RIGHT_OFFSET    (-15)
+#define SERVO_BACK_LEFT_OFFSET      (+5)
+#define SERVO_BACK_RIGHT_OFFSET     (-25)
+
 const uint16_t config_default_ch_values[RC_NUM_CHANNELS] = { RC_CENTER, RC_CENTER, RC_CENTER, RC_CENTER, RC_LOW, RC_CENTER };

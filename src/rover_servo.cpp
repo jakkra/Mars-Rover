@@ -36,6 +36,7 @@ typedef struct ServoState {
 
 static void update_servo_positions_timer_cb(void* arg);
 static void reset_moving_servo(RoverServoId servoId);
+static uint16_t calibrated_servo_map(RoverServoId servoId, uint16_t us, uint16_t in_low, uint16_t in_high, uint16_t out_low, uint16_t out_high);
 
 static xSemaphoreHandle position_update_sem_handle;
 static xSemaphoreHandle i2cSemaphoreHandle;
@@ -80,7 +81,7 @@ void rover_servo_write(RoverServoId servoId, uint16_t us, bool full_range)
   if (full_range) {
     pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN_FULL_RANGE, SERVOMAX_FULL_RANGE);
   } else {
-    pwm_value = map(us, RC_LOW, RC_HIGH, SERVOMIN, SERVOMAX);
+    pwm_value = calibrated_servo_map(servoId, us, RC_LOW, RC_HIGH, SERVOMIN, SERVOMAX);
   }
 
   reset_moving_servo(servoId);
@@ -172,4 +173,34 @@ static void reset_moving_servo(RoverServoId servoId)
   assert(servoId < SERVO_LAST);
   memset(&servo_states[servoId], 0 , sizeof(ServoState));
   servo_states[servoId].isPaused = true;
+}
+
+static uint16_t calibrated_servo_map(RoverServoId servoId, uint16_t us, uint16_t in_low, uint16_t in_high, uint16_t out_low, uint16_t out_high)
+{
+  uint16_t val = map(us, in_low, in_high, out_low, out_high);
+  
+  switch (servoId) {
+    case SERVO_FRONT_LEFT:
+      val += SERVO_FRONT_LEFT_OFFSET;
+      break;
+    case SERVO_FRONT_RIGHT:
+      val += SERVO_FRONT_RIGHT_OFFSET;
+      break;
+    case SERVO_BACK_LEFT:
+      val += SERVO_BACK_LEFT_OFFSET;
+      break;
+    case SERVO_BACK_RIGHT:
+      val += SERVO_BACK_RIGHT_OFFSET;
+      break;
+    default:
+      break;
+  }
+
+  if (val < SERVOMIN_FULL_RANGE) {
+    val = SERVOMIN_FULL_RANGE;
+  } else if (val > SERVOMAX_FULL_RANGE) {
+    val = SERVOMAX_FULL_RANGE;
+  }
+
+  return val;
 }

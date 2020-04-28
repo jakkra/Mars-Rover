@@ -80,7 +80,7 @@ static uint16_t filter_signal(uint16_t* signals) {
   }
   signal = signal / RC_FILTER_SAMPLES;
   
-  if (signal <= 800) return RC_CENTER; // If we are unlucky in timing when controller disconnect we might get some random low signal
+  if (signal <= 800) return RC_CENTER; // If we are unlucky in timing when RC controller disconnect we might get some random low signal
   if (signal > 800 && signal < 1010) return RC_LOW;
   if (signal > 1990) return RC_HIGH;
   if (signal > 1480 && signal < 1520) return RC_CENTER;
