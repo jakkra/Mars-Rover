@@ -1,11 +1,12 @@
 #include <Arduino.h>
 #include "rover_servo.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/list.h"
+#include "freertos/task.h"
 #include "ESP32Servo.h"
 #include "rover_config.h"
 #include "esp_timer.h"
 #include "esp_err.h"
+#include "assert.h"
 
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
@@ -44,9 +45,9 @@ static xSemaphoreHandle i2cSemaphoreHandle;
 static Adafruit_PWMServoDriver servo_driver = Adafruit_PWMServoDriver(ADAFRUIT_PWM_EXPANDER_ADDR, Wire);
 static bool isInitialized = false;
 static ServoState servo_states[SERVO_LAST];
-static esp_timer_handle_t servo_update_timer;
 
 void rover_servo_init(xSemaphoreHandle i2cSemHandle) {
+  TaskHandle_t xHandle = NULL;
   if (!isInitialized) {
     isInitialized = true;
     memset(&servo_states, 0, sizeof(servo_states));
@@ -62,12 +63,7 @@ void rover_servo_init(xSemaphoreHandle i2cSemHandle) {
     assert(position_update_sem_handle);
     xSemaphoreGive(position_update_sem_handle);
 
-    esp_timer_create_args_t periodic_timer_args;
-    periodic_timer_args.callback = &update_servo_positions_timer_cb;
-    periodic_timer_args.name = "update_servo_positions";
-
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &servo_update_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(servo_update_timer, SERVO_UPDATE_INTERVAL_MS * 1000));
+    assert(xTaskCreate(update_servo_positions_timer_cb, "ServoUpdater", 2048, NULL, tskIDLE_PRIORITY, &xHandle) == pdPASS);
   }
 }
 
@@ -136,35 +132,37 @@ void rover_servo_resume(RoverServoId servoId)
 
 static void update_servo_positions_timer_cb(void* arg)
 {
-  ServoState* axis;
-  uint32_t next_servo_pos;
-  for (uint8_t i = 0; i < SERVO_LAST; i++) {
-    axis = &servo_states[i];
-    if (axis->num_moves == 0) continue;
-    if (axis->isPaused) continue;
-    
-    xSemaphoreTake(position_update_sem_handle, portMAX_DELAY);
-    axis->num_moves_finished++;
-    if (axis->num_moves_finished % axis->speed == 0) {
-      // Check if last move
-      if (abs(axis->current_pos - axis->end_pos) <= axis->steps_per_move) {
-        axis->current_pos = axis->end_pos;
-        next_servo_pos = axis->end_pos;
-        axis->num_moves = 0;
-        axis->num_moves_finished = 0;
-        axis->start_pos = axis->current_pos;
-      } else if (axis->direction == DIRECTION_POSITIVE) {
-        next_servo_pos = axis->current_pos + axis->steps_per_move;
-        axis->current_pos = axis->current_pos + axis->steps_per_move;
+  while (true) {
+    ServoState* axis;
+    uint32_t next_servo_pos;
+    for (uint8_t i = 0; i < SERVO_LAST; i++) {
+      axis = &servo_states[i];
+      if (axis->num_moves == 0) continue;
+      if (axis->isPaused) continue;
+      xSemaphoreTake(position_update_sem_handle, portMAX_DELAY);
+      axis->num_moves_finished++;
+      if (axis->num_moves_finished % axis->speed == 0) {
+        // Check if last move
+        if (abs(axis->current_pos - axis->end_pos) <= axis->steps_per_move) {
+          axis->current_pos = axis->end_pos;
+          next_servo_pos = axis->end_pos;
+          axis->num_moves = 0;
+          axis->num_moves_finished = 0;
+          axis->start_pos = axis->current_pos;
+        } else if (axis->direction == DIRECTION_POSITIVE) {
+          next_servo_pos = axis->current_pos + axis->steps_per_move;
+          axis->current_pos = axis->current_pos + axis->steps_per_move;
+        } else {
+          next_servo_pos = axis->current_pos - axis->steps_per_move;
+          axis->current_pos = axis->current_pos - axis->steps_per_move;
+        }
+        xSemaphoreGive(position_update_sem_handle);
+        rover_servo_write((RoverServoId)i, next_servo_pos, true);
       } else {
-        next_servo_pos = axis->current_pos - axis->steps_per_move;
-        axis->current_pos = axis->current_pos - axis->steps_per_move;
+        xSemaphoreGive(position_update_sem_handle);
       }
-      xSemaphoreGive(position_update_sem_handle);
-      rover_servo_write((RoverServoId)i, next_servo_pos, true);
-    } else {
-      xSemaphoreGive(position_update_sem_handle);
     }
+    vTaskDelay(pdMS_TO_TICKS(SERVO_UPDATE_INTERVAL_MS));
   }
 }
 
