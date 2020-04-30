@@ -62,6 +62,7 @@
 #define ROVER_SETTINGS_SWITCH_1     2
 #define ROVER_SETTINGS_SWITCH_2     23
 
+// Offset used in rover_servo to make 
 #define SERVO_FRONT_LEFT_OFFSET     (+20)
 #define SERVO_FRONT_RIGHT_OFFSET    (-15)
 #define SERVO_BACK_LEFT_OFFSET      (+5)

@@ -12,6 +12,7 @@ void rover_head_init(void) {
 
 void rover_head_yaw(uint16_t yaw) {
   uint16_t speed;
+  printf("yaw: %d ", yaw);
   if (yaw < RC_CENTER && yaw > 0) {
     yaw = 2 * RC_CENTER - yaw;
     speed = map(yaw, RC_CENTER, RC_HIGH, SERVO_MIN_SPEED, SERVO_MAX_SPEED);
@@ -26,6 +27,7 @@ void rover_head_yaw(uint16_t yaw) {
 
 void rover_head_pitch(uint16_t pitch) {
   uint16_t speed;
+  printf("pitch: %d\n", pitch);
   if (pitch < RC_CENTER && pitch > 0) {
     pitch = 2 * RC_CENTER - pitch;
     speed = map(pitch, RC_CENTER, RC_HIGH, SERVO_MIN_SPEED, SERVO_MAX_SPEED);

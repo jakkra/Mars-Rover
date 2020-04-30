@@ -107,7 +107,7 @@ static void check_switch_channels(void* params)
       current_arm_mode = new_arm_mode;
       arm_mode_callback(new_arm_mode);
     }
-    vTaskDelay(interval * (1000 / configTICK_RATE_HZ)); 
+    vTaskDelay(pdMS_TO_TICKS(interval)); 
   }
 }
 
