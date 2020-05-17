@@ -1,11 +1,25 @@
 # Rover
+Controller for driving the Rover found here [https://github.com/jakkra/RoverController](https://github.com/jakkra/RoverController).
+
 ## CAD model
 The whole Fusion 360 project can be found in the CAD folder, download the .f3z file and open it in desktop Fusion 360. 
 
 ### Wheels
 There are two options for wheeles, either original Curiosity style wheels that print in one piece. Or Mars 2020 style wheels that print in two parts where outer part can be printed in flexibale plastic such as TPU. The rover_2020_wheel_flex.f3d wheels are preferred if your printer can print in TPU as they provide way more grip.
 
-## Driving modes
+## Driving
+There are 3 ways to drive the Rover right now:
+- Websockets (website hosted on the Rover, see data folder)
+- Generic RC Transmitter.
+- LoRa.
+
+[Here](https://github.com/jakkra/RoverController) is my controller supporting both LoRa and websocket control of the Rover.
+
+### Telematics
+Rover will automatically send telematics data as soon as someone connects to the websocket server.
+TODO is to send this over LoRa to supprt telematics from far away. 
+
+### Driving Modes
 There are two ways to drive the rover. Either using a RC controller or from a website hosted on the ESP32.
 RC controller is deafult, but as soon as someone connects to the ESP32 AP and a websocket is created, the RC controller will be overriden by the WiFi controller. The website functionality is just as basic as the RC controller right now, but the plan is to add more advanced functionality to the website which is not possible to do on the RC controller.
 On the RC Transmitter I use two joysticks for channels 1-4 for, and two switches for channel 5-6.
@@ -16,7 +30,7 @@ When switch1 is:
 - HIGH: Arm mode, the two joysticks are used for moving axis 1-4 on the arm. Switch2 is used to switch between moving axis 1-4 and axis 5-6 (the gripper). This will be changed in the future, steering each axis manually is not really a good way, inverse kinematics is TODO.
 
 ## Arm
-Currently arm is just pretty much mapped to controls on the RC Controller, this is not really useful, so TODO.
+Currently arm is just pretty much mapped to controls on the Controller, this is not really useful, so TODO.
 
 ## Hardware
 - Uses one DC motor in each wheel

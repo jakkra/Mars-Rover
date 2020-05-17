@@ -1,11 +1,7 @@
 /*
-* Code for controlling my Rover. Controlled using generic 6 channel RC Transmitter
-* with the receiver connected to an Arduino. 
-* 6 motors (one in each wheel) controlled by two ESC's (each side one ESC).
-* 4 Servos used for turning, one on each corner wheel.
-* 6 Servoes controlling the robot arm of the Rover.
+* Code for controlling my Rover. Controlled using generic 6 channel RC Transmitter, Websocket or Lora.
 * 
-* On the RC Transmitter I use two joysticks for channels 1-4 for, and two switches for channel 5-6.
+* On the transmitter I use two joysticks for channels 1-4 for, and two switches for channel 5-6.
 * Joysticks are used both for steering the Rover and for moving each axis of the arm.
 * When switch1 is:
 *   -LOW: joysticks are used for driving the rover
