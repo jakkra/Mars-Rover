@@ -33,6 +33,7 @@ static uint8_t receive_buf[LORA_PACKET_LENGTH];
 static uint32_t last_lora_data_ticks = 0;
 static uint32_t last_lora_data_checked_ticks = 0;
 
+
 void lora_controller_init()
 {
   assert(!is_initialized);
@@ -49,7 +50,7 @@ void lora_controller_init()
     ESP_LOGE(TAG, "Starting LoRa failed!");
     return;
   }
-  LoRa.setFrequency(915E6);
+  LoRa.setFrequency(868E6);
   LoRa.setSpreadingFactor(6);
   LoRa.setSignalBandwidth(250E3);
   LoRa.setCodingRate4(5);
@@ -75,17 +76,18 @@ void lora_controller_register_connection_callback(LoraControllerStatusCb* cb)
 
 uint16_t lora_controller_get_val(uint8_t channel)
 {
+  uint16_t value;
   assert(status == LORA_CONTROLLER_CONNECTED);
   portENTER_CRITICAL(&isr_data_lock);
   assert(channel < RC_NUM_CHANNELS);
-  return channel_values[channel];
+  value = channel_values[channel];
   portEXIT_CRITICAL(&isr_data_lock);
+  return value;
 }
 
 static void on_receive_isr(int packet_size)
 {
   uint16_t i = 0;
-
   if (packet_size != LORA_PACKET_LENGTH) {
     ets_printf("ERROR: Unexpected packet size %d\n", packet_size);
     return;
@@ -115,12 +117,12 @@ static void lora_state_checker(void* args)
         for (uint8_t i = 0; i < num_callbacks; i++) {
           status_callbacks[i](LORA_CONTROLLER_CONNECTED);
         }
-      } else {
-        if (status == LORA_CONTROLLER_CONNECTED) {
-          status = LORA_CONTROLLER_DISCONNECTED;
-          for (uint8_t i = 0; i < num_callbacks; i++) {
-            status_callbacks[i](LORA_CONTROLLER_DISCONNECTED);
-          }
+      }
+    } else {
+      if (status == LORA_CONTROLLER_CONNECTED) {
+        status = LORA_CONTROLLER_DISCONNECTED;
+        for (uint8_t i = 0; i < num_callbacks; i++) {
+          status_callbacks[i](LORA_CONTROLLER_DISCONNECTED);
         }
       }
     }

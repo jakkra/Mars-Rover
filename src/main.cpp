@@ -84,9 +84,6 @@ void setup() {
 
     rc_receiver_rmt_init();
 
-    lora_controller_init();
-    lora_controller_register_connection_callback(&handle_lora_controller_status);
-
     startup_settings = rover_settings_switch_get_state();
     if (startup_settings == ROVER_SWITCH_STATE_STATION_LORA) {
       ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_STATION_LORA\n");
@@ -98,12 +95,16 @@ void setup() {
       wifi_enabled = true;
     } else {
       wifi_enabled = false;
-      ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_STATION_LORA\n");
+      ESP_LOGD(TAG, "Mode: ROVER_SWITCH_STATE_LORA_ONLY\n");
     }
 
     if (wifi_enabled) {
       wifi_controller_register_connection_callback(&handle_wifi_controller_status);
     }
+
+    lora_controller_init();
+    lora_controller_register_connection_callback(&handle_lora_controller_status);
+
     init_switch_checker(RC_LOW, RC_ROVER_MODE_ROVER_CHANNEL, RC_ARM_MODE_ROVER_CHANNEL, &handle_rover_mode_changed, &handle_arm_mode_changed, wifi_enabled);
 
     
