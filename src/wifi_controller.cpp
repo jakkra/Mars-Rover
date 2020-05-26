@@ -7,10 +7,15 @@
 #include "ESPAsyncWebServer.h"
 #include "esp_log.h"
 #include "assert.h"
+#include "WiFiUdp.h"
 
 #define MAX_REGISTRATED_CALLBACKS 2
 
+#define UDP_PORT 8080
+
 static const char* TAG = "wifi_controller";
+
+static const char* broadcast_addr = "192.168.4.255";
 
 static void handle_not_found(AsyncWebServerRequest *request);
 static void handle_websocket_event(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length);
@@ -26,12 +31,16 @@ static IPAddress local_ip(192,168,4,5);
 static IPAddress gateway(192,168,4,1);
 static IPAddress subnet(255,255,255,0);
 
-static AsyncWebServer server(80                                                                                                                                                             );
+static AsyncWebServer server(80);
 static AsyncWebSocket ws("/ws");
+
+static WiFiUDP udp;
 
 static WifiControllerStatusCb* status_callbacks[MAX_REGISTRATED_CALLBACKS];
 static uint8_t num_callbacks;
 static bool is_initialized = false;
+
+static bool wifi_connected = false;
 
 void wifi_controller_init(const char* ssid, const char* password, WifiControllerMode mode)
 {
@@ -71,6 +80,8 @@ void wifi_controller_init(const char* ssid, const char* password, WifiController
   server.onNotFound(handle_not_found);
   server.begin();
 
+  udp.begin(UDP_PORT);
+
   is_initialized = true;
 }
 
@@ -83,7 +94,23 @@ void wifi_controller_register_connection_callback(WifiControllerStatusCb* cb) {
 
 void wifi_controller_ws_send_bin(uint8_t* data, uint32_t length)
 {
-    ws.binaryAll(data, length);
+  ws.binaryAll(data, length);
+}
+
+void wifi_controller_udp_send_bin(uint8_t* data, uint32_t length)
+{
+  if (wifi_connected) {
+    uint16_t udp_buf_size = length + 2;
+    uint8_t udp_buf[udp_buf_size];
+
+    // Encapsulate data in start and end tag to validate correct-ish packet on other side.
+    udp_buf[0] = '[';
+    memcpy(&udp_buf[1], data, length);
+    udp_buf[udp_buf_size - 1] = ']';
+    udp.beginPacket(broadcast_addr, UDP_PORT);
+    udp.write((uint8_t*)udp_buf, udp_buf_size);
+    udp.endPacket();
+  }
 }
 
 uint16_t wifi_controller_get_val(uint8_t channel)
@@ -106,10 +133,13 @@ static void reset_ch_values() {
 static void wifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {
   if (event == SYSTEM_EVENT_STA_DISCONNECTED) {
+    wifi_connected = false;
     if (info.disconnected.reason == 6) {
       Serial.println("NOT_AUTHED reconnect");
       WiFi.reconnect();
     }
+  } else if (event == SYSTEM_EVENT_STA_GOT_IP) {
+    wifi_connected = true;
   }
 }
 

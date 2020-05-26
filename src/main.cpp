@@ -31,7 +31,8 @@
 
 #define DEBUG
 
-#define ACCEL_READ_PERIOD_MS 500
+#define ACCEL_READ_PERIOD_MS 100
+#define PING_WS_ITERATIONS (1000 / ACCEL_READ_PERIOD_MS)
 
 #ifdef DEBUG
 #define LOG Serial.print
@@ -67,7 +68,7 @@ static bool lora_control_enabled = false;
 
 static RoverSwitchState startup_settings;
 static bool wifi_enabled = false;
-
+static uint8_t ping_ws_iteration = 0;
 
 void setup() {
     Serial.begin(SERIAL_PORT_SPEED);
@@ -269,6 +270,18 @@ static void handle_controller_disconnected(uint16_t last_sampled_signal) {
 static void on_accel_data(GyroAccelData* data)
 {
   if (wifi_enabled) {
-    wifi_controller_ws_send_bin((uint8_t*)data, sizeof(GyroAccelData));
+    if (startup_settings == ROVER_SWITCH_STATE_AP) {
+      wifi_controller_ws_send_bin((uint8_t*)data, sizeof(GyroAccelData));
+    } else {
+      wifi_controller_udp_send_bin((uint8_t*)data, sizeof(GyroAccelData));
+    }
+
+    // To keep the ws open to the controller we need to ping it so that controller knows we did not loose connection.
+    if (startup_settings != ROVER_SWITCH_STATE_AP && (ping_ws_iteration % PING_WS_ITERATIONS) == 0) {
+      uint8_t ping = 1;
+      wifi_controller_ws_send_bin(&ping, 1);
+      ping_ws_iteration = 0;
+    }
+    ping_ws_iteration++;
   }
 }
