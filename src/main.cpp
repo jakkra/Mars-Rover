@@ -31,7 +31,7 @@
 
 #define DEBUG
 
-#define ACCEL_READ_PERIOD_MS 100
+#define ACCEL_READ_PERIOD_MS 500
 
 #ifdef DEBUG
 #define LOG Serial.print

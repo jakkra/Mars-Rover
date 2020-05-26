@@ -20,7 +20,7 @@
 
 static const char* TAG = "LORA_CONTROLLER";
 
-static void on_receive_isr(int packetSize);
+static IRAM_ATTR void lora_availible_isr(void);
 
 static void lora_state_checker(void* args);
 static void lora_receive_task(void* args);
@@ -41,7 +41,7 @@ void lora_controller_init()
 {
   assert(!is_initialized);
   BaseType_t task_create_status;
-  
+
   memset(channel_values, 0, sizeof(channel_values));
   num_callbacks = 0;
 
@@ -56,10 +56,16 @@ void lora_controller_init()
   LoRa.setSpreadingFactor(6);
   LoRa.setSignalBandwidth(250E3);
   LoRa.setCodingRate4(5);
+  LoRa.enableCrc();
 
-  LoRa.onReceive(on_receive_isr);
+  // Need to take care of LoRa data availible isr as the LoRa library does to much stuff in the ISR
+  // causing problems with i2c when ISR happens while i2c runs. Instead we will force it into a context switch out
+  // of the ISR before doing SPI stuff.
+  pinMode(DIO0, INPUT);
+  attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
 
   LoRa.receive(LORA_PACKET_LENGTH);
+
   ESP_LOGI(TAG, "Starting LoRa OK!");
 
   task_create_status = xTaskCreate(lora_state_checker, "lora_state_checker", 2048, NULL, tskIDLE_PRIORITY, NULL);
@@ -97,36 +103,34 @@ static void lora_receive_task(void* args)
     assert(xTaskNotifyWait(LORA_DATA_NOTIFICATION, 0, &notification, portMAX_DELAY));
     assert(notification == LORA_DATA_NOTIFICATION);
 
-    while (LoRa.available() && i < LORA_PACKET_LENGTH) {
-      receive_buf[i] = (uint8_t)LoRa.read();
+    // Needed to set correct state for LoRa module
+    // If you get an build error here, then you need to move handleDio0Rise into the public methods in LoRa.h library file.
+    LoRa.handleDio0Rise();
+
+    while (LoRa.available()) {
+      if (i < LORA_PACKET_LENGTH) {
+        receive_buf[i] = (uint8_t)LoRa.read();
+      } else {
+        LoRa.read();
+      }
       i++;
     }
 
     if (i != LORA_PACKET_LENGTH) {
-      printf("ERROR: Got more data than max packet length\n");
-      return;
+      printf("ERROR: Unexpected data length: %d\n", i);
+    } else {
+      memcpy(channel_values, receive_buf, LORA_PACKET_LENGTH);
+      //printf("Got: %d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
     }
-
-    memcpy(channel_values, receive_buf, LORA_PACKET_LENGTH);
-    //printf("Got: %d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
+    attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
   }
 }
 
-static void on_receive_isr(int packet_size)
+static IRAM_ATTR void lora_availible_isr(void)
 {
-  if (packet_size != LORA_PACKET_LENGTH) {
-    ets_printf("ERROR: Unexpected packet size %d\n", packet_size);
-    return;
-  }
-
   last_lora_data_ticks = xTaskGetTickCountFromISR();
-
-  BaseType_t shouldWakeUpTask;
-  assert(xTaskNotifyFromISR(task_handle, LORA_DATA_NOTIFICATION, eSetValueWithOverwrite, &shouldWakeUpTask) == pdPASS);
-
-  if (shouldWakeUpTask) {
-    portYIELD_FROM_ISR();
-  }
+  detachInterrupt(digitalPinToInterrupt(DIO0));
+  assert(xTaskNotifyFromISR(task_handle, LORA_DATA_NOTIFICATION, eSetValueWithOverwrite, NULL) == pdPASS);
 }
 
 static void lora_state_checker(void* args)
