@@ -58,12 +58,6 @@ void lora_controller_init()
   LoRa.setCodingRate4(5);
   LoRa.enableCrc();
 
-  // Need to take care of LoRa data availible isr as the LoRa library does to much stuff in the ISR
-  // causing problems with i2c when ISR happens while i2c runs. Instead we will force it into a context switch out
-  // of the ISR before doing SPI stuff.
-  pinMode(DIO0, INPUT);
-  attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
-
   LoRa.receive(LORA_PACKET_LENGTH);
 
   ESP_LOGI(TAG, "Starting LoRa OK!");
@@ -75,6 +69,12 @@ void lora_controller_init()
   assert(task_create_status == pdPASS);
 
   is_initialized = true;
+
+  // Need to take care of LoRa data availible isr as the LoRa library does to much stuff in the ISR
+  // causing problems with i2c when ISR happens while i2c runs. Instead we will force it into a context switch out
+  // of the ISR before doing SPI stuff.
+  pinMode(DIO0, INPUT);
+  attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
 }
 
 void lora_controller_register_connection_callback(LoraControllerStatusCb* cb)
