@@ -41,7 +41,7 @@ void gyro_accel_init(xSemaphoreHandle i2c_sem_handle, bool calibrate, OnData* cb
   assert(update_accel_sem != NULL);
   xSemaphoreGive(update_accel_sem);
 
-  status_bs = xTaskCreate(read_mpu, "GyroReader", 2048, NULL, tskIDLE_PRIORITY, &xHandle);
+  status_bs = xTaskCreate(read_mpu, "GyroReader", 4096, NULL, tskIDLE_PRIORITY, &xHandle);
   assert(status_bs == pdPASS);
 }
 

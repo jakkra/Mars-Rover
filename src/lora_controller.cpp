@@ -1,6 +1,7 @@
 #include "lora_controller.h"
 #include "rover_config.h"
-#include "FreeRTOS.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 
 #include <SPI.h>
@@ -36,6 +37,7 @@ static uint32_t last_lora_data_ticks = 0;
 static uint32_t last_lora_data_checked_ticks = 0;
 
 static TaskHandle_t task_handle;
+static xSemaphoreHandle lora_sem;
 
 void lora_controller_init()
 {
@@ -44,6 +46,8 @@ void lora_controller_init()
 
   memset(channel_values, 0, sizeof(channel_values));
   num_callbacks = 0;
+  lora_sem = xSemaphoreCreateBinary();
+  assert(lora_sem != NULL);
 
   SPI.begin(SCK, MISO, MOSI, SS);
   LoRa.setPins(SS, RST, DIO0);
@@ -53,12 +57,13 @@ void lora_controller_init()
     return;
   }
   LoRa.setFrequency(868E6);
-  LoRa.setSpreadingFactor(6);
-  LoRa.setSignalBandwidth(250E3);
-  LoRa.setCodingRate4(5);
   LoRa.enableCrc();
+  LoRa.setSignalBandwidth(500E3);
+  LoRa.setCodingRate4(5);
+  LoRa.setSpreadingFactor(7);
+  LoRa.receive();
 
-  LoRa.receive(LORA_PACKET_LENGTH);
+  xSemaphoreGive(lora_sem);
 
   ESP_LOGI(TAG, "Starting LoRa OK!");
 
@@ -94,6 +99,19 @@ uint16_t lora_controller_get_val(uint8_t channel)
   return value;
 }
 
+void lora_controller_send(uint8_t* buf, uint16_t length)
+{
+  assert(xSemaphoreTake(lora_sem, pdMS_TO_TICKS(50)) == pdTRUE);
+  detachInterrupt(digitalPinToInterrupt(DIO0));
+  if (LoRa.beginPacket()) {
+    LoRa.write(buf, length);
+    LoRa.endPacket();
+    LoRa.receive();
+  }
+  attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
+  xSemaphoreGive(lora_sem);
+}
+
 static void lora_receive_task(void* args)
 {
   while (true) {
@@ -102,6 +120,8 @@ static void lora_receive_task(void* args)
     
     assert(xTaskNotifyWait(LORA_DATA_NOTIFICATION, 0, &notification, portMAX_DELAY));
     assert(notification == LORA_DATA_NOTIFICATION);
+
+    assert(xSemaphoreTake(lora_sem, pdMS_TO_TICKS(50)) == pdTRUE);
 
     // Needed to set correct state for LoRa module
     // If you get an build error here, then you need to move handleDio0Rise into the public methods in LoRa.h library file.
@@ -123,6 +143,7 @@ static void lora_receive_task(void* args)
       //printf("Got: %d, %d \t %d, %d \t %d, %d\n", channel_values[0], channel_values[1], channel_values[2],  channel_values[3], channel_values[4], channel_values[5]);
     }
     attachInterrupt(digitalPinToInterrupt(DIO0), lora_availible_isr, RISING);
+    xSemaphoreGive(lora_sem);
   }
 }
 
