@@ -1,6 +1,14 @@
-# Rover
-Controller for driving the Rover found here [https://github.com/jakkra/RoverController](https://github.com/jakkra/RoverController).
+<div align="center">
+  <h1>Mars Rover</h1>
+<img src="/.github/2.jpg"/>
+<sub>
+  Curiosity/Perseverance inspired Rover
+</sub>
+</div>
 
+---
+
+Controller for driving the Rover found here [https://github.com/jakkra/RoverController](https://github.com/jakkra/RoverController).
 ## CAD model
 The whole Fusion 360 project can be found in the CAD folder, download the .f3z file and open it in desktop Fusion 360. 
 
@@ -9,28 +17,15 @@ There are two options for wheeles, either original Curiosity style wheels that p
 
 ## Driving
 There are 3 ways to drive the Rover right now:
-- Websockets (website hosted on the Rover, see data folder)
-- Generic RC Transmitter.
-- LoRa.
+- LoRa
+- Websockets
+- Generic RC Transmitter
 
+By moving a 3 way switch on the rover, the startup mode can be choosen; WiFi station + LoRa, LoRa only or WiFi AP (when using website hosted on the Rover, see data folder).
 [Here](https://github.com/jakkra/RoverController) is my controller supporting both LoRa and websocket control of the Rover.
 
 ### Telematics
-Rover will automatically send telematics data as soon as someone connects to the websocket server.
-TODO is to send this over LoRa to supprt telematics from far away. 
-
-### Driving Modes
-There are two ways to drive the rover. Either using a RC controller or from a website hosted on the ESP32.
-RC controller is deafult, but as soon as someone connects to the ESP32 AP and a websocket is created, the RC controller will be overriden by the WiFi controller. The website functionality is just as basic as the RC controller right now, but the plan is to add more advanced functionality to the website which is not possible to do on the RC controller.
-On the RC Transmitter I use two joysticks for channels 1-4 for, and two switches for channel 5-6.
-Joysticks are used both for steering the Rover and for moving each axis of the arm.
-When switch1 is:
-- LOW: joysticks are used for driving the rover
-- MID: Wheels will be set correct angles for the rover to be able to rotate on the spot by running each side of wheels in opposite direction. The direction is descided by the steer joystick.
-- HIGH: Arm mode, the two joysticks are used for moving axis 1-4 on the arm. Switch2 is used to switch between moving axis 1-4 and axis 5-6 (the gripper). This will be changed in the future, steering each axis manually is not really a good way, inverse kinematics is TODO.
-
-## Arm
-Currently arm is just pretty much mapped to controls on the Controller, this is not really useful, so TODO.
+Rover will automatically send telematics data as soon as someone connects to the websocket server or over LoRa if Rover is being controlled ove LoRa.
 
 ## Hardware
 - Uses one DC motor in each wheel
@@ -57,17 +52,17 @@ There is no manual, but downloading the CAD model and browsing through it should
 Videos:
 - Showing the boogie mechanism in action [https://imgur.com/4UIsRLl](https://imgur.com/4UIsRLl) 
 - Arm [https://imgur.com/KY5ioLb](https://imgur.com/KY5ioLb)
-<img src="/.github/2.jpg "/>
-<img src="/.github/full.jpg "/>
-<img src="/.github/boogie_full.jpg "/>
-<img src="/.github/1.jpg "/>
-<img src="/.github/4.jpg "/>
-<img src="/.github/parts.jpg "/>
+<img src="/.github/full.jpg"/>
+<img src="/.github/1.jpg"/>
 <p float="left">
-<img src="/.github/arm.jpg" width="420" />
-<img src="/.github/back.jpg" width="420" />
+<img src="/.github/driving.gif" width="420"/>
+<img src="/.github/driving1.gif" width="420"/>
 </p>
-<img src="/.github/full1.jpg "/>
+<img src="/.github/boogie_full.jpg "/>
+<img src="/.github/4.jpg"/>
+<img src="/.github/parts.jpg"/>
+<img src="/.github/arm.jpg"/>
+<img src="/.github/full1.jpg"/>
 <img src="/.github/cad.png" />
 <p float="left">
 <img src="/.github/cad_capture.png" width="420" />
@@ -75,12 +70,29 @@ Videos:
 </p>
 <img src="/.github/wifi_controller.jpg" />
 
+
+## Driving Modes
+There are three ways to drive the rover. Either using a RC controller, LoRa or from a website hosted on the ESP32.
+RC controller is deafult, but as soon as someone connects to the ESP32 AP and a websocket is created, the RC controller or LoRa will be overriden by the WiFi controller.
+The website functionality is just as basic as the RC controller right now, but the plan is to add more advanced functionality to the website which is not possible to do on the RC controller.
+On the RC Transmitter I use two joysticks for channels 1-4 for, and two switches for channel 5-6.
+Joysticks are used both for steering the Rover and for moving each axis of the arm.
+When switch1 is:
+- LOW: joysticks are used for driving the rover
+- MID: Wheels will be set correct angles for the rover to be able to rotate on the spot by running each side of wheels in opposite direction. The direction is descided by the steer joystick.
+- HIGH: Arm mode, the two joysticks are used for moving axis 1-4 on the arm. Switch2 is used to switch between moving axis 1-4 and axis 5-6 (the gripper). This will be changed in the future, steering each axis manually is not really a good way, inverse kinematics is TODO.
+
+## Arm
+Currently arm is just pretty much mapped to controls on the Controller, this is not really useful, so TODO.
+
+## Misc
+
 ### Uploading Controller page to Spiffs
 ```
 pio run -t uploadfs
 ```
 
-### Misc
+### Decoding crashes
 ```
 xtensa-esp32-elf/bin/xtensa-esp32-elf-addr2line.exe -pfiaC -e /c/Users/ijakk_000/Documents/Rover-code/.pio/build/esp-wrover-kit/firmware.elf 0x00000000:0x3ffb5c60 ...
 ```
