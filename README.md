@@ -28,7 +28,7 @@ By moving a 3 way switch on the rover, the startup mode can be choosen; WiFi sta
 Rover will automatically send telematics data as soon as someone connects to the websocket server or over LoRa if Rover is being controlled ove LoRa.
 
 ## Hardware
-- Uses one DC motor in each wheel
+- 6 12V 60 RPM DC motors, one in each wheel (https://github.com/jakkra/Mars-Rover/issues/6)
 - 2 brushless ESC's one for each side (3 motors)
 - Lots of (12, one for each servo) 12V to 5V switching voltage regulators
 - 4 servos (MG946R/MG996R) on each corner wheel to steer.
