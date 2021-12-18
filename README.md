@@ -12,6 +12,8 @@ Controller for driving the Rover found here [https://github.com/jakkra/RoverCont
 ## CAD model
 The whole Fusion 360 project can be found in the CAD folder, download the .f3z file and open it in desktop Fusion 360. 
 
+The CAD render images are more up to date than the real images of the rover, for example some cosmetics have been added and the high gain antenna which can be rotated by a servo.
+
 ### Wheels
 There are two options for wheeles, either original Curiosity style wheels that print in one piece. Or Mars 2020 style wheels that print in two parts where outer part can be printed in flexibale plastic such as TPU. The rover_2020_wheel_flex.f3d wheels are preferred if your printer can print in TPU as they provide way more grip.
 
@@ -63,11 +65,9 @@ Videos:
 <img src="/.github/parts.jpg"/>
 <img src="/.github/arm.jpg"/>
 <img src="/.github/full1.jpg"/>
+<img src="/.github/cad_capture.png" />
+<img src="/.github/front_render.png" />
 <img src="/.github/cad.png" />
-<p float="left">
-<img src="/.github/cad_capture.png" width="420" />
-<img src="/.github/render.jpg" width="420" />
-</p>
 <img src="/.github/wifi_controller.jpg" />
 
 
